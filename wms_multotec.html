@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>WMS MULTOTEC</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ══════════════════════════════════════════════
    RESET & BASE
@@ -286,7 +287,7 @@ input[type="file"]{display:none;}
   <div class="menu-item" onclick="showView('traspaso',this)">🔄 Traspaso</div>
   <div class="menu-item" onclick="showView('kardex',this)">📊 Kardex</div>
   <div class="menu-section">Próximamente</div>
-  <div class="menu-item" style="opacity:.45;cursor:default">📋 Auditorías</div>
+  <div class="menu-item" onclick="showView('marcas',this)">🏷️ Marcas SKU</div>
   <div class="menu-item" style="opacity:.45;cursor:default">🚚 Despachos</div>
   <div class="menu-item" style="opacity:.45;cursor:default">🏢 Bodegas</div>
   <div class="menu-item" style="opacity:.45;cursor:default">✨ Crear SKUs</div>
@@ -584,6 +585,52 @@ input[type="file"]{display:none;}
             <div class="tbl-footer-item"><span class="tbl-footer-label">Saldo final</span><span class="tbl-footer-val" id="ft-saldo">0</span></div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MARCAS SKU ── -->
+  <div class="view" id="view-marcas">
+    <div class="main-content">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">🏷️ <span>Marcas</span> SKU</div>
+          <div style="font-size:.8em;color:var(--text-muted);margin-top:3px">Generación de etiquetas con código QR para identificación de productos</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="addMarcaRow()">＋ Agregar SKU</button>
+          <button class="btn btn-excel" onclick="imprimirMarcas()">🖨️ Imprimir Etiquetas</button>
+          <button class="btn btn-ghost" onclick="limpiarMarcas()">🗑 Limpiar</button>
+        </div>
+      </div>
+
+      <!-- Tabla de entrada -->
+      <div style="background:white;border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07)">
+        <table style="width:100%;border-collapse:collapse;font-size:.9em">
+          <thead>
+            <tr>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:left;font-size:.72em;text-transform:uppercase;letter-spacing:.06em;width:36px">#</th>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:left;font-size:.72em;text-transform:uppercase;letter-spacing:.06em;min-width:140px">SKU *</th>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:left;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Descripción 1</th>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:left;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Descripción 2</th>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:left;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Categoría</th>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:center;font-size:.72em;text-transform:uppercase;letter-spacing:.06em;width:100px">Cantidad</th>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:center;font-size:.72em;text-transform:uppercase;letter-spacing:.06em;width:80px">U.M.</th>
+              <th style="background:#1a4d4d;color:#a8e6c8;padding:11px 14px;text-align:center;font-size:.72em;text-transform:uppercase;letter-spacing:.06em;width:60px"></th>
+            </tr>
+          </thead>
+          <tbody id="marcas-tbody"></tbody>
+        </table>
+        <div id="marcas-empty" style="text-align:center;padding:50px;color:var(--text-muted)">
+          <div style="font-size:2.5em;margin-bottom:10px">🏷️</div>
+          <div>Agrega SKUs para generar etiquetas con código QR</div>
+        </div>
+      </div>
+
+      <!-- Preview etiquetas -->
+      <div id="marcas-preview-wrap" style="display:none">
+        <div style="font-size:.82em;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Vista previa de etiquetas</div>
+        <div id="marcas-preview" style="display:flex;flex-wrap:wrap;gap:16px"></div>
       </div>
     </div>
   </div>
@@ -1500,6 +1547,214 @@ async function initApp(){
     console.error('Supabase error:',e);
   }
 }
+// ══════════════════════════════════════════════
+//  MARCAS SKU
+// ══════════════════════════════════════════════
+let marcaCounter = 0;
+let marcasRows = [];
+
+function addMarcaRow() {
+  marcaCounter++;
+  const id = marcaCounter;
+  marcasRows.push(id);
+  const tbody = document.getElementById('marcas-tbody');
+  const tr = document.createElement('tr');
+  tr.id = `marca-row-${id}`;
+  tr.style.borderBottom = '1px solid #eef4f2';
+  tr.innerHTML = `
+    <td style="padding:10px 14px;color:#6a8a80;font-size:.85em;text-align:center">${id}</td>
+    <td style="padding:8px 10px">
+      <div style="position:relative">
+        <input id="m-sku-${id}" placeholder="Buscar SKU…" autocomplete="off"
+          style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.86em;font-family:inherit;outline:none"
+          oninput="onMarcaSkuInput(${id})" onkeydown="onMarcaSkuKey(event,${id})">
+        <div id="m-dd-${id}" style="position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--green-light);border-radius:9px;box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:300;display:none;max-height:180px;overflow-y:auto"></div>
+      </div>
+    </td>
+    <td style="padding:8px 10px"><input id="m-desc1-${id}" readonly placeholder="Automático…" style="width:100%;padding:7px 10px;border:1.5px solid #e8f0ea;border-radius:8px;font-size:.86em;font-family:inherit;background:#f9fcfb;outline:none;color:#1a2e2a"></td>
+    <td style="padding:8px 10px"><input id="m-desc2-${id}" readonly placeholder="Automático…" style="width:100%;padding:7px 10px;border:1.5px solid #e8f0ea;border-radius:8px;font-size:.86em;font-family:inherit;background:#f9fcfb;outline:none;color:#1a2e2a"></td>
+    <td style="padding:8px 10px"><input id="m-cat-${id}" readonly placeholder="Automático…" style="width:100%;padding:7px 10px;border:1.5px solid #e8f0ea;border-radius:8px;font-size:.86em;font-family:inherit;background:#f9fcfb;outline:none;color:#1a2e2a"></td>
+    <td style="padding:8px 10px;text-align:center"><input id="m-qty-${id}" type="number" min="1" value="1" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.86em;font-family:inherit;outline:none;text-align:center" oninput="refreshPreview()"></td>
+    <td style="padding:8px 10px;text-align:center"><span id="m-um-${id}" style="font-size:.86em;font-weight:600;color:#1a4d4d">—</span></td>
+    <td style="padding:8px 10px;text-align:center"><button onclick="delMarcaRow(${id})" style="background:#fee2e2;color:#c02020;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:.9em">×</button></td>
+  `;
+  tbody.appendChild(tr);
+  document.getElementById('marcas-empty').style.display = 'none';
+  document.getElementById(`m-sku-${id}`).focus();
+}
+
+function delMarcaRow(id) {
+  const el = document.getElementById(`marca-row-${id}`);
+  if (el) el.remove();
+  marcasRows = marcasRows.filter(r => r !== id);
+  if (!marcasRows.length) document.getElementById('marcas-empty').style.display = 'block';
+  refreshPreview();
+}
+
+function limpiarMarcas() {
+  document.getElementById('marcas-tbody').innerHTML = '';
+  marcasRows = [];
+  marcaCounter = 0;
+  document.getElementById('marcas-empty').style.display = 'block';
+  document.getElementById('marcas-preview-wrap').style.display = 'none';
+  document.getElementById('marcas-preview').innerHTML = '';
+}
+
+async function onMarcaSkuInput(id) {
+  const q = document.getElementById(`m-sku-${id}`).value.trim().toLowerCase();
+  const dd = document.getElementById(`m-dd-${id}`);
+  if (!q) { dd.style.display = 'none'; return; }
+  const inv = await getInvCached();
+  const matches = inv.filter(i => i.sku.toLowerCase().includes(q) || (i.desc1 || '').toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.map(i => `
+    <div onmousedown="selectMarcaSku(${id},'${i.sku}')"
+      style="padding:8px 12px;cursor:pointer;font-size:.85em;border-bottom:1px solid #f0f0f0;display:flex;gap:10px"
+      onmouseover="this.style.background='#f0faf6'" onmouseout="this.style.background='white'">
+      <span style="font-weight:700;color:#1a4d4d;font-family:monospace">${i.sku}</span>
+      <span style="color:#6a8a80">${i.desc1 || ''}</span>
+    </div>`).join('');
+  dd.style.display = 'block';
+  dd._matches = matches;
+  dd._idx = -1;
+}
+
+function onMarcaSkuKey(e, id) {
+  const dd = document.getElementById(`m-dd-${id}`);
+  if (!dd || dd.style.display === 'none') return;
+  const opts = dd.querySelectorAll('div[onmousedown]');
+  if (e.key === 'ArrowDown') { dd._idx = Math.min((dd._idx || -1) + 1, opts.length - 1); opts.forEach((o, i) => o.style.background = i === dd._idx ? '#f0faf6' : 'white'); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { dd._idx = Math.max((dd._idx || 0) - 1, 0); opts.forEach((o, i) => o.style.background = i === dd._idx ? '#f0faf6' : 'white'); e.preventDefault(); }
+  else if (e.key === 'Enter' && dd._idx >= 0) { opts[dd._idx].dispatchEvent(new MouseEvent('mousedown')); e.preventDefault(); }
+  else if (e.key === 'Escape') { dd.style.display = 'none'; }
+}
+
+async function selectMarcaSku(id, sku) {
+  document.getElementById(`m-sku-${id}`).value = sku;
+  document.getElementById(`m-dd-${id}`).style.display = 'none';
+  const inv = await getInvCached();
+  const item = inv.find(i => i.sku === sku);
+  if (!item) return;
+  document.getElementById(`m-desc1-${id}`).value = item.desc1 || '';
+  document.getElementById(`m-desc2-${id}`).value = item.desc2 || '';
+  document.getElementById(`m-cat-${id}`).value = item.categoria || '';
+  document.getElementById(`m-um-${id}`).textContent = item.um || 'UN';
+  refreshPreview();
+}
+
+function refreshPreview() {
+  const preview = document.getElementById('marcas-preview');
+  const wrap = document.getElementById('marcas-preview-wrap');
+  preview.innerHTML = '';
+  const logoSrc = localStorage.getItem('wms_logo_src') || '';
+  let hasAny = false;
+
+  marcasRows.forEach(id => {
+    const sku = (document.getElementById(`m-sku-${id}`) || {}).value?.trim();
+    if (!sku) return;
+    hasAny = true;
+    const desc1 = document.getElementById(`m-desc1-${id}`).value || '';
+    const desc2 = document.getElementById(`m-desc2-${id}`).value || '';
+    const cat   = document.getElementById(`m-cat-${id}`).value || '';
+    const qty   = document.getElementById(`m-qty-${id}`).value || '1';
+    const um    = document.getElementById(`m-um-${id}`).textContent || 'UN';
+
+    const card = document.createElement('div');
+    card.className = 'etiqueta-card';
+    card.id = `etiqueta-${id}`;
+    card.style.cssText = 'width:280px;background:white;border-radius:14px;border:1.5px solid #d0e8dc;box-shadow:0 4px 16px rgba(0,0,0,.1);overflow:hidden;font-family:"Segoe UI",sans-serif;';
+    card.innerHTML = `
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#1a4d4d,#2e9e7a);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+        ${logoSrc ? `<img src="${logoSrc}" style="height:32px;object-fit:contain;background:white;padding:3px 6px;border-radius:5px">` : '<div style="font-size:.85em;font-weight:800;color:white;letter-spacing:.05em">MULTOTEC</div>'}
+        <div style="font-size:.65em;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.08em">Identificación</div>
+      </div>
+      <!-- Body -->
+      <div style="padding:14px 16px">
+        <div style="font-size:1.15em;font-weight:800;color:#1a4d4d;font-family:monospace;letter-spacing:.04em;margin-bottom:6px">${sku}</div>
+        <div style="font-size:.88em;font-weight:600;color:#1a2e2a;margin-bottom:2px">${desc1}</div>
+        ${desc2 ? `<div style="font-size:.8em;color:#6a8a80;margin-bottom:4px">${desc2}</div>` : ''}
+        ${cat ? `<div style="display:inline-block;background:#e8f5f0;color:#1a4d4d;font-size:.72em;font-weight:700;padding:2px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">${cat}</div>` : ''}
+        <div style="background:#f0faf6;border-radius:8px;padding:7px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:.75em;font-weight:700;color:#6a8a80;text-transform:uppercase;letter-spacing:.05em">Cantidad</span>
+          <span style="font-size:1.1em;font-weight:800;color:#1a4d4d">${qty} <span style="font-size:.7em;font-weight:600">${um}</span></span>
+        </div>
+        <!-- QR -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <div id="qr-${id}" style="padding:6px;background:white;border:1.5px solid #d0e8dc;border-radius:8px"></div>
+          <div style="font-size:.72em;font-weight:600;color:#6a8a80;letter-spacing:.04em;text-align:center">Escanea para Ingresar</div>
+        </div>
+      </div>
+    `;
+    preview.appendChild(card);
+
+    // Generar QR
+    setTimeout(() => {
+      const qrEl = document.getElementById(`qr-${id}`);
+      if (qrEl && typeof QRCode !== 'undefined') {
+        qrEl.innerHTML = '';
+        new QRCode(qrEl, {
+          text: sku,
+          width: 100,
+          height: 100,
+          colorDark: '#1a4d4d',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    }, 100);
+  });
+
+  wrap.style.display = hasAny ? 'block' : 'none';
+}
+
+function imprimirMarcas() {
+  const preview = document.getElementById('marcas-preview');
+  if (!preview.children.length) { toast('⚠️ Agrega al menos un SKU para imprimir'); return; }
+
+  // Recolectar etiquetas como HTML
+  let etiquetasHTML = '';
+  [...preview.children].forEach(card => {
+    // Clonar y convertir QR canvas a imagen
+    const clone = card.cloneNode(true);
+    const originalQRs = card.querySelectorAll('canvas');
+    const cloneQRs = clone.querySelectorAll('canvas');
+    originalQRs.forEach((canvas, i) => {
+      const img = document.createElement('img');
+      img.src = canvas.toDataURL();
+      img.style.cssText = canvas.style.cssText;
+      if (cloneQRs[i]) cloneQRs[i].replaceWith(img);
+    });
+    etiquetasHTML += clone.outerHTML;
+  });
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas SKU</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',sans-serif;background:#f5f8f7;padding:20px;}
+    .etiquetas-grid{display:flex;flex-wrap:wrap;gap:16px;justify-content:flex-start;}
+    .etiqueta-card{page-break-inside:avoid;break-inside:avoid;}
+    @media print{
+      body{background:white;padding:10px;}
+      .etiquetas-grid{gap:10px;}
+      @page{margin:10mm;}
+    }
+  </style></head><body>
+  <div class="etiquetas-grid">${etiquetasHTML}</div>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+// Cerrar dropdowns de marcas al click fuera
+document.addEventListener('click', e => {
+  if (!e.target.closest('[id^="m-dd-"]') && !e.target.closest('[id^="m-sku-"]')) {
+    document.querySelectorAll('[id^="m-dd-"]').forEach(dd => dd.style.display = 'none');
+  }
+});
+
+
 initApp();
 </script>
 </body>
