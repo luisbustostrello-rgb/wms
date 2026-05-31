@@ -768,7 +768,6 @@ input[type="file"]{display:none;}
               <th class="dth">Cliente</th>
               <th class="dth">OF</th>
               <th class="dth">OC</th>
-              <th class="dth">SKU</th>
               <th class="dth">Descripción 1</th>
               <th class="dth">Descripción 2</th>
               <th class="dth right">Cant. (un)</th>
@@ -777,7 +776,6 @@ input[type="file"]{display:none;}
               <th class="dth right">Vol. m³</th>
               <th class="dth">Quarter</th>
               <th class="dth">F. Ingreso</th>
-              <th class="dth">F. Producción</th>
               <th class="dth">F. Despacho</th>
               <th class="dth">Estado</th>
               <th class="dth right">Pallets</th>
@@ -805,40 +803,33 @@ input[type="file"]{display:none;}
     <h2 id="despacho-modal-title">🚚 Nuevo Despacho</h2>
     <div class="form-grid">
       <div class="section-label">Identificación</div>
-      <div class="form-group"><label>Cliente *</label><input id="d-cliente" placeholder="Nombre del cliente"></div>
+      <div class="form-group"><label>Cliente</label><input id="d-cliente" placeholder="Nombre del cliente"></div>
       <div class="form-group"><label>OF (Orden de Fabricación)</label><input id="d-of" placeholder="Ej: OF-2025-001"></div>
-      <div class="form-group"><label>OC (Orden de Compra) *</label><input id="d-oc" placeholder="Ej: OC-20250528"></div>
-      <div class="form-group"><label>SKU *</label>
-        <div style="position:relative">
-          <input id="d-sku" placeholder="Buscar SKU…" autocomplete="off" oninput="onDespSku()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none">
-          <div id="d-sku-dd" style="position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--green-light);border-radius:9px;box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:400;display:none;max-height:180px;overflow-y:auto"></div>
-        </div>
-      </div>
-      <div class="form-group"><label>Descripción 1</label><input id="d-desc1" readonly placeholder="Automático…" style="background:#f9fcfb"></div>
-      <div class="form-group"><label>Descripción 2</label><input id="d-desc2" readonly placeholder="Automático…" style="background:#f9fcfb"></div>
+      <div class="form-group"><label>OC (Orden de Compra)</label><input id="d-oc" placeholder="Ej: OC-20250528"></div>
+      <div class="form-group"><label>Descripción 1</label><input id="d-desc1" placeholder="Ej: TPU-COI-Laripur 8025/25Kg"></div>
+      <div class="form-group full"><label>Descripción 2</label><input id="d-desc2" placeholder="Ej: MP/IMPU/TPU-COI"></div>
     </div>
     <div style="height:10px"></div>
     <div class="form-grid-3">
       <div class="section-label" style="grid-column:1/-1">Producto y Logística</div>
-      <div class="form-group"><label>Cantidad (un) *</label><input id="d-cant" type="number" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Cantidad (un)</label><input id="d-cant" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>Peso Pallet (kg)</label><input id="d-peso" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>Dimensión Pallet (LxAxH cm)</label><input id="d-dim" placeholder="Ej: 120x80x150" oninput="calcVolumen()"></div>
       <div class="form-group"><label>Volumen m³</label><input id="d-vol" readonly placeholder="Auto…" style="background:#f9fcfb;font-weight:700;color:#1a4d4d"></div>
       <div class="form-group"><label>Cant. Pallets</label><input id="d-pallets" type="number" min="0" placeholder="0"></div>
-      <div class="form-group"><label>N° Guía</label><input id="d-guia" placeholder="Ej: 7919"></div>
-    </div>
-    <div style="height:10px"></div>
-    <div class="form-grid">
-      <div class="section-label">Fechas y Estado</div>
-      <div class="form-group"><label>Fecha Producción</label><input id="d-fprod" type="date"></div>
-      <div class="form-group"><label>Fecha Despacho</label><input id="d-fdesp" type="date"></div>
-      <div class="form-group"><label>Estado *</label>
+      <div class="form-group"><label>Estado</label>
         <select id="d-estado">
           <option value="PENDIENTE">⏳ Pendiente</option>
           <option value="EN TRANSITO">🚛 En Tránsito</option>
           <option value="DESPACHOS OK">✅ Despachos OK</option>
         </select>
       </div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="form-grid">
+      <div class="section-label">Fechas y Despacho</div>
+      <div class="form-group"><label>Fecha Despacho</label><input id="d-fdesp" type="date"></div>
+      <div class="form-group"><label>N° Guía <span style="font-size:.8em;color:#6a8a80;font-weight:400">(se puede agregar después)</span></label><input id="d-guia" placeholder="Ej: 7919"></div>
       <div class="form-group full"><label>Observación</label><textarea id="d-obs" placeholder="Notas adicionales…"></textarea></div>
     </div>
     <div class="modal-footer">
@@ -847,7 +838,6 @@ input[type="file"]{display:none;}
     </div>
   </div>
 </div>
-
 <!-- Modal editar campo despacho (guía/pallets/obs) -->
 <div class="modal-overlay" id="modal-despacho-edit">
   <div class="modal" style="max-width:480px">
@@ -1947,15 +1937,16 @@ function openDespachoModal(desp=null){
   document.getElementById('despacho-modal-title').textContent = desp ? '✏️ Editar Despacho' : '🚚 Nuevo Despacho';
   const fields = {
     'd-cliente': desp?.cliente||'', 'd-of': desp?.of||'', 'd-oc': desp?.oc||'',
-    'd-sku': desp?.sku||'', 'd-desc1': desp?.desc1||'', 'd-desc2': desp?.desc2||'',
+    'd-desc1': desp?.desc1||'', 'd-desc2': desp?.desc2||'',
     'd-cant': desp?.cant||'', 'd-peso': desp?.peso||'', 'd-dim': desp?.dim||'',
     'd-pallets': desp?.pallets||'', 'd-guia': desp?.guia||'',
-    'd-fprod': desp?.fprod||'', 'd-fdesp': desp?.fdesp||'', 'd-obs': desp?.obs||''
+    'd-fdesp': desp?.fdesp||'', 'd-obs': desp?.obs||''
   };
   Object.entries(fields).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.value=val; });
   const est = document.getElementById('d-estado');
   if(est) est.value = desp?.estado||'PENDIENTE';
   if(desp?.dim) calcVolumen();
+  else { const v=document.getElementById('d-vol'); if(v) v.value=''; }
   document.getElementById('modal-despacho').classList.add('open');
 }
 
@@ -1965,37 +1956,30 @@ function closeDespachoModal(){
 }
 
 async function saveDespacho(){
-  const cliente = document.getElementById('d-cliente').value.trim();
-  const oc      = document.getElementById('d-oc').value.trim();
-  if(!cliente){ toast('⚠️ El cliente es obligatorio'); return; }
-  if(!oc)     { toast('⚠️ La OC es obligatoria'); return; }
-
   const dim = document.getElementById('d-dim').value.trim();
   const vol = getVolumenNum(dim);
   const now = new Date();
   const fechaIngreso = now.toLocaleDateString('es-CL');
 
   const desp = {
-    id:        editingDespId || `desp_${Date.now()}`,
+    id:           editingDespId || `desp_${Date.now()}`,
     fechaIngreso,
-    fechaObj:  now.toISOString(),
-    cliente,
-    of:        document.getElementById('d-of').value.trim(),
-    oc,
-    sku:       document.getElementById('d-sku').value.trim(),
-    desc1:     document.getElementById('d-desc1').value.trim(),
-    desc2:     document.getElementById('d-desc2').value.trim(),
-    cant:      parseFloat(document.getElementById('d-cant').value)||0,
-    peso:      parseFloat(document.getElementById('d-peso').value)||0,
+    fechaObj:     now.toISOString(),
+    cliente:      document.getElementById('d-cliente').value.trim(),
+    of:           document.getElementById('d-of').value.trim(),
+    oc:           document.getElementById('d-oc').value.trim(),
+    desc1:        document.getElementById('d-desc1').value.trim(),
+    desc2:        document.getElementById('d-desc2').value.trim(),
+    cant:         parseFloat(document.getElementById('d-cant').value)||0,
+    peso:         parseFloat(document.getElementById('d-peso').value)||0,
     dim,
-    vol:       parseFloat(vol.toFixed(3)),
-    quarter:   getQuarter(document.getElementById('d-fprod').value || now.toISOString()),
-    fprod:     document.getElementById('d-fprod').value,
-    fdesp:     document.getElementById('d-fdesp').value,
-    estado:    document.getElementById('d-estado').value,
-    pallets:   parseFloat(document.getElementById('d-pallets').value)||0,
-    guia:      document.getElementById('d-guia').value.trim(),
-    obs:       document.getElementById('d-obs').value.trim(),
+    vol:          parseFloat(vol.toFixed(3)),
+    quarter:      getQuarter(now.toISOString()),
+    fdesp:        document.getElementById('d-fdesp').value,
+    estado:       document.getElementById('d-estado').value,
+    pallets:      parseFloat(document.getElementById('d-pallets').value)||0,
+    guia:         document.getElementById('d-guia').value.trim(),
+    obs:          document.getElementById('d-obs').value.trim(),
   };
 
   showLoading('Guardando despacho…');
@@ -2091,25 +2075,23 @@ function renderDespachos(){
     <td class="dtd" style="font-weight:700;color:#1a4d4d">${d.cliente||'—'}</td>
     <td class="dtd">${d.of||'—'}</td>
     <td class="dtd"><span style="font-family:monospace;font-weight:600">${d.oc||'—'}</span></td>
-    <td class="dtd"><span style="font-family:monospace;font-weight:700;color:#1a4d4d">${d.sku||'—'}</span></td>
-    <td class="dtd" style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${d.desc1||'—'}</td>
-    <td class="dtd" style="color:#6a8a80;max-width:140px;overflow:hidden;text-overflow:ellipsis">${d.desc2||'—'}</td>
+    <td class="dtd" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${d.desc1||'—'}</td>
+    <td class="dtd" style="color:#6a8a80;max-width:160px;overflow:hidden;text-overflow:ellipsis">${d.desc2||'—'}</td>
     <td class="dtd right">${d.cant||0}</td>
     <td class="dtd right">${d.peso||0}</td>
     <td class="dtd">${d.dim||'—'}</td>
     <td class="dtd right" style="font-weight:700;color:#1a6a48">${d.vol?d.vol.toFixed(3):'—'}</td>
     <td class="dtd"><span style="background:#e8f0ff;color:#1e40af;padding:2px 10px;border-radius:20px;font-size:.8em;font-weight:700">${d.quarter||'—'}</span></td>
     <td class="dtd" style="color:#4a6a60;font-size:.82em">${d.fechaIngreso||'—'}</td>
-    <td class="dtd" style="color:#4a6a60;font-size:.82em">${d.fprod||'—'}</td>
     <td class="dtd" style="color:#4a6a60;font-size:.82em">${d.fdesp||'—'}</td>
     <td class="dtd">${estadoBadge(d.estado)}</td>
     <td class="dtd right">${d.pallets||0}</td>
     <td class="dtd" style="font-family:monospace;font-weight:600">${d.guia||'—'}</td>
     <td class="dtd" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;color:#6a8a80">${d.obs||'—'}</td>
     <td class="dtd" style="white-space:nowrap">
-      <button onclick="openEditDespacho('${d.id}')" class="btn btn-ghost btn-sm">✏️</button>
-      <button onclick="openDespachoModal(despachos.find(x=>x.id==='${d.id}'))" class="btn btn-ghost btn-sm">📋</button>
-      <button onclick="deleteDespacho('${d.id}')" class="btn btn-danger btn-sm">🗑</button>
+      <button onclick="openEditDespacho('${d.id}')" class="btn btn-ghost btn-sm" title="Editar rápido">✏️ Editar</button>
+      <button onclick="openDespachoModal(despachos.find(x=>x.id==='${d.id}'))" class="btn btn-primary btn-sm" title="Ver completo">👁 Ver</button>
+      <button onclick="deleteDespacho('${d.id}')" class="btn btn-danger btn-sm" title="Eliminar">🗑</button>
     </td>
   </tr>`).join('');
 
@@ -2154,11 +2136,11 @@ function updateKpiDespachos(){
 function exportDespachosExcel(){
   if(!despachos.length){ toast('⚠️ No hay despachos para exportar'); return; }
   const ws = XLSX.utils.json_to_sheet(despachos.map(d=>({
-    'Cliente':d.cliente,'OF':d.of,'OC':d.oc,'SKU':d.sku,
+    'Cliente':d.cliente,'OF':d.of,'OC':d.oc,
     'Descripción 1':d.desc1,'Descripción 2':d.desc2,
     'Cantidad':d.cant,'Peso Pallet (kg)':d.peso,'Dimensión Pallet':d.dim,
     'Volumen m³':d.vol,'Quarter':d.quarter,
-    'F. Ingreso':d.fechaIngreso,'F. Producción':d.fprod,'F. Despacho':d.fdesp,
+    'F. Ingreso':d.fechaIngreso,'F. Despacho':d.fdesp,
     'Estado':d.estado,'Pallets':d.pallets,'Guía':d.guia,'Observación':d.obs
   })));
   ws['!cols']=[{wch:18},{wch:12},{wch:14},{wch:12},{wch:25},{wch:20},{wch:8},{wch:12},{wch:15},{wch:10},{wch:8},{wch:12},{wch:12},{wch:12},{wch:16},{wch:8},{wch:10},{wch:25}];
