@@ -131,7 +131,7 @@ td.right{text-align:right;}
 .upload-zone p{font-size:.8em;color:var(--text-muted);margin-top:6px;}
 
 /* ══ ENTRADAS / SALIDAS ══ */
-.two-col{display:grid;grid-template-columns:380px 1fr;gap:18px;flex:1;overflow:hidden;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;overflow:hidden;}
 .form-panel{background:white;border-radius:16px;border:1.5px solid var(--border);padding:20px;overflow-y:auto;box-shadow:0 2px 12px rgba(0,0,0,.07);}
 .right-panel{display:flex;flex-direction:column;gap:14px;overflow:hidden;}
 .tipo-tabs{display:flex;gap:8px;margin-bottom:16px;}
@@ -331,12 +331,21 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- KPI Cards -->
-      <div class="dashboard-grid" style="margin-top:0;margin-bottom:20px">
+      <div class="dashboard-grid" style="margin-top:0;margin-bottom:12px">
         <div class="d-card"><h3>SKUs Activos</h3><p id="dash-skus">—</p></div>
         <div class="d-card"><h3>Entradas Hoy</h3><p id="dash-ent">—</p></div>
         <div class="d-card"><h3>Salidas Hoy</h3><p id="dash-sal">—</p></div>
         <div class="d-card"><h3>Traspasos Hoy</h3><p id="dash-tras">—</p></div>
         <div class="d-card"><h3>Valor Inventario</h3><p id="dash-val" style="font-size:1em">—</p></div>
+      </div>
+      <!-- KPI Despachos -->
+      <div style="font-size:.72em;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🚚 Despachos</div>
+      <div class="dashboard-grid" style="margin-top:0;margin-bottom:20px;grid-template-columns:repeat(5,1fr)">
+        <div class="d-card"><h3>Pallets del Mes</h3><p id="dash-pallets">—</p></div>
+        <div class="d-card"><h3>OC Totales</h3><p id="dash-oc">—</p></div>
+        <div class="d-card"><h3>Guías Emitidas</h3><p id="dash-guias">—</p></div>
+        <div class="d-card"><h3>Volumen m³</h3><p id="dash-vol">—</p></div>
+        <div class="d-card"><h3>Cumplimiento</h3><p id="dash-cumpl" style="font-size:1.4em">—</p></div>
       </div>
 
       <!-- Gráficos -->
@@ -706,7 +715,10 @@ input[type="file"]{display:none;}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="openDespachoModal()">＋ Nuevo Despacho</button>
-          <button class="btn btn-excel" onclick="exportDespachosExcel()">📊 Excel</button>
+          <button class="btn btn-upload" onclick="downloadDespPlantilla()">⬇️ Plantilla Excel</button>
+          <button class="btn btn-json" onclick="document.getElementById('desp-bulk-input').click()">📂 Carga Masiva</button>
+          <input type="file" id="desp-bulk-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="uploadDespMasivo(this)">
+          <button class="btn btn-excel" onclick="exportDespachosExcel()">📊 Exportar Excel</button>
         </div>
       </div>
 
@@ -1756,6 +1768,19 @@ function updateDashboard(){
   if(s('dash-tras')) s('dash-tras').textContent = traspasos.filter(t=>t.fecha?.startsWith(hoy)&&t.estado==='activo').length;
   const val = items.reduce((s,i)=>s+cantTotal(i)*(i.pUni||0),0);
   if(s('dash-val'))  s('dash-val').textContent  = fmtMoney(val);
+  // Despacho KPIs
+  const mesActual = new Date().toISOString().substring(0,7);
+  const palletsMes = despachos.filter(d=>d.fechaObj?.startsWith(mesActual)).reduce((s,d)=>s+(d.pallets||0),0);
+  const ocTotal    = new Set(despachos.map(d=>d.oc).filter(Boolean)).size;
+  const guiasTotal = despachos.filter(d=>d.guia).length;
+  const volTotal   = despachos.reduce((s,d)=>s+(d.vol||0),0);
+  const ok         = despachos.filter(d=>d.estado==='DESPACHOS OK').length;
+  const cumpl      = despachos.length ? Math.round((ok/despachos.length)*100) : 0;
+  if(s('dash-pallets')) s('dash-pallets').textContent = palletsMes;
+  if(s('dash-oc'))      s('dash-oc').textContent      = ocTotal;
+  if(s('dash-guias'))   s('dash-guias').textContent   = guiasTotal;
+  if(s('dash-vol'))     s('dash-vol').textContent      = volTotal.toFixed(1)+' m³';
+  if(s('dash-cumpl'))   s('dash-cumpl').textContent   = cumpl+'%';
 
   setTimeout(()=>{
     renderChartMovimientos();
@@ -2131,6 +2156,61 @@ function updateKpiDespachos(){
   if(s('kpi-volumen')) s('kpi-volumen').textContent  = volTotal.toFixed(2);
   if(s('kpi-cumpl'))   s('kpi-cumpl').textContent   = cumpl+'%';
   if(s('kpi-cumpl-det')) s('kpi-cumpl-det').textContent = `${ok} OK / ${pend} Pend.`;
+}
+
+function downloadDespPlantilla(){
+  const headers = [['Cliente','OF','OC','Descripción 1','Descripción 2','Cant (un)','Peso pallet (kg)','Dimensión pallet (LxAxH cm)','Fecha Despacho (dd-mm-aaaa)','Estado','Guía','Pallet','Observación']];
+  const example = [['Pucobre','20260430 EA4 REV1','43101','305x305x38/7SOLI','HF-SLOT--T1/PO-45',55,124.9,'95x95x120','17-05-2026','DESPACHOS OK','8046',1,'']];
+  const ws = XLSX.utils.aoa_to_sheet([...headers,...example]);
+  ws['!cols']=[{wch:18},{wch:18},{wch:12},{wch:28},{wch:22},{wch:8},{wch:12},{wch:20},{wch:18},{wch:16},{wch:8},{wch:8},{wch:20}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Despachos');
+  XLSX.writeFile(wb,'plantilla_despachos.xlsx');
+  toast('✅ Plantilla descargada');
+}
+
+async function uploadDespMasivo(input){
+  const file = input.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = async e => {
+    try{
+      const wb = XLSX.read(e.target.result,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){ toast('⚠️ El archivo está vacío'); return; }
+      showLoading(`Importando ${rows.length} despachos…`);
+      const now = new Date();
+      const fechaIngreso = now.toLocaleDateString('es-CL');
+      const nuevos = rows.map(row=>{
+        const dim = String(row['Dimensión pallet (LxAxH cm)']||row['Dimension pallet']||'').trim();
+        const vol = getVolumenNum(dim);
+        const estado = String(row['Estado']||'PENDIENTE').trim().toUpperCase();
+        return {
+          id:`desp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+          fechaIngreso,fechaObj:now.toISOString(),
+          cliente:String(row['Cliente']||'').trim(),
+          of:String(row['OF']||'').trim(),
+          oc:String(row['OC']||'').trim(),
+          desc1:String(row['Descripción 1']||row['Descripcion 1']||'').trim(),
+          desc2:String(row['Descripción 2']||row['Descripcion 2']||'').trim(),
+          cant:parseFloat(row['Cant (un)']||row['Cant']||0)||0,
+          peso:parseFloat(row['Peso pallet (kg)']||row['Peso']||0)||0,
+          dim,vol:parseFloat(vol.toFixed(3)),
+          quarter:getQuarter(now.toISOString()),
+          fdesp:String(row['Fecha Despacho (dd-mm-aaaa)']||row['Fecha Despacho']||'').trim(),
+          estado:estado==='OK'||estado==='DESPACHOS OK'?'DESPACHOS OK':estado==='EN TRANSITO'||estado==='EN RUTA'?'EN TRANSITO':'PENDIENTE',
+          pallets:parseFloat(row['Pallet']||row['Pallets']||0)||0,
+          guia:String(row['Guía']||row['Guia']||'').trim(),
+          obs:String(row['Observación']||row['Observacion']||'').trim(),
+        };
+      });
+      for(const d of nuevos){await supaUpsertDespacho(d);despachos.unshift(d);}
+      hideLoading();input.value='';
+      toast(`✅ ${nuevos.length} despachos importados`);
+      renderDespachos();updateKpiDespachos();
+    }catch(err){hideLoading();toast('❌ Error: '+err.message);}
+  };
+  r.readAsArrayBuffer(file);
 }
 
 function exportDespachosExcel(){
