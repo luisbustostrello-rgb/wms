@@ -692,7 +692,7 @@ input[type="file"]{display:none;}
 
   <!-- ── MARCAS SKU ── -->
   <div class="view" id="view-marcas">
-    <div class="main-content">
+    <div class="main-content" style="overflow-y:auto;height:100%">
       <div class="top-bar">
         <div>
           <div class="page-title">🏷️ <span>Marcas</span> SKU</div>
@@ -806,7 +806,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- TABLA DESPACHOS -->
-      <div style="background:white;border-radius:16px;border:1.5px solid var(--border);overflow:auto;flex:1;box-shadow:0 2px 12px rgba(0,0,0,.07);min-height:200px">
+      <div style="background:white;border-radius:16px;border:1.5px solid var(--border);overflow:auto;box-shadow:0 2px 12px rgba(0,0,0,.07);min-height:120px">
         <table style="width:100%;border-collapse:collapse;font-size:.84em;min-width:1400px">
           <thead>
             <tr>
@@ -1690,13 +1690,35 @@ async function buscar(){
       motivo:`Traspaso ← ${t.origen}`,guia:t.numVaucher,proveedor:'',obs:'',
     }))));
     let allRows=[...movs,...trasRows].sort((a,b)=>new Date(a.fechaObj)-new Date(b.fechaObj));
-    if(skuFiltro)allRows=allRows.filter(r=>r.sku===skuFiltro);
-    if(tipoFiltro)allRows=allRows.filter(r=>r.tipo===tipoFiltro);
-    if(bodegaFiltro)allRows=allRows.filter(r=>r.bodega===bodegaFiltro);
-    if(desde)allRows=allRows.filter(r=>r.fechaObj>=desde);
-    if(hasta)allRows=allRows.filter(r=>r.fechaObj<=hasta+'T23:59:59');
+    if(skuFiltro) allRows=allRows.filter(r=>r.sku===skuFiltro);
+    if(tipoFiltro) allRows=allRows.filter(r=>r.tipo===tipoFiltro);
+    if(bodegaFiltro) allRows=allRows.filter(r=>r.bodega===bodegaFiltro);
+    if(desde) allRows=allRows.filter(r=>r.fechaObj>=desde);
+    if(hasta) allRows=allRows.filter(r=>r.fechaObj<=hasta+'T23:59:59');
+    // ── Saldo Inicial desde inventario ──
+    if(skuFiltro && !tipoFiltro){
+      const item=inv.find(i=>i.sku===skuFiltro);
+      if(item){
+        const bodegas=['bu1','bu2','bu3','bu4','bu5'];
+        const bodsToShow=bodegaFiltro?[bodegaFiltro.toLowerCase()]:bodegas;
+        bodsToShow.forEach(b=>{
+          const bodLabel=b.toUpperCase();
+          const stockInv=item[b]||0;
+          const stockMovs=allRows.filter(r=>r.bodega===bodLabel).reduce((s,r)=>s+r.cantidad,0);
+          const saldoInicial=stockInv-stockMovs;
+          if(saldoInicial!==0){
+            allRows.unshift({
+              id:`init-${item.sku}-${b}`,fechaObj:'2000-01-01T00:00:00.000Z',fecha:'Saldo Inicial',
+              tipo:'inicial',sku:item.sku,desc1:item.desc1||'',bodega:bodLabel,
+              cantidad:saldoInicial,pUni:item.pUni||0,pUniReg:item.pUni||0,
+              pPonderado:item.pUni||0,total:saldoInicial*(item.pUni||0),
+              motivo:'Saldo inicial inventario',guia:'',proveedor:'',
+            });
+          }
+        });
+      }
+    }
     kdResultados=allRows;
-    // SKU card
     if(skuFiltro){
       const item=inv.find(i=>i.sku===skuFiltro);
       if(item){
@@ -1722,6 +1744,23 @@ function renderTabla(rows){
     const key=`${r.sku}|${r.bodega}`;saldos[key]=(saldos[key]||0)+r.cantidad;
     const saldoAct=saldos[key];const saldoClass=saldoAct<0?'style="color:#c02020"':saldoAct===0?'style="color:#6a8a80"':'style="color:#1a7a50"';
     const cantAbs=Math.abs(r.cantidad);
+    // Saldo inicial row special styling
+    if(r.tipo==='inicial'){
+      return `<tr style="background:#f0faf6;border-bottom:2px solid #b4dece">
+        <td class="mono" style="font-size:.82em;color:#1a6a48;font-weight:700">—</td>
+        <td><span style="background:#1a4d4d;color:#a8e6c8;padding:4px 10px;border-radius:20px;font-size:.75em;font-weight:700">📋 Saldo Inicial</span></td>
+        <td class="mono" style="font-weight:700;color:#1a4d4d">${r.sku}</td>
+        <td style="font-size:.86em">${r.desc1||'—'}</td>
+        <td><span style="background:#e8f5f0;padding:2px 8px;border-radius:5px;font-size:.8em;font-weight:700;font-family:monospace">${r.bodega}</span></td>
+        <td class="right mono" style="font-weight:800;color:#1a7a50;font-size:1em">+${cantAbs}</td>
+        <td class="right mono" style="color:#1a4d4d;font-weight:600">${r.pUni>0?fmtMoney(r.pUni):'—'}</td>
+        <td class="right mono" style="color:#1a4d4d;font-weight:600">${r.pPonderado>0?fmtMoney(r.pPonderado):'—'}</td>
+        <td class="right mono" style="font-weight:700">${r.total>0?fmtMoney(r.total):'—'}</td>
+        <td class="right mono" style="color:#1a7a50;font-weight:700;background:#e8f5f0">${saldoAct}</td>
+        <td>—</td><td>—</td>
+        <td style="font-size:.84em;color:#1a6a48;font-style:italic">Saldo inicial inventario</td>
+      </tr>`;
+    }
     const bg=r.tipo==='entrada'?{cls:'badge badge-entrada',ico:'📥',lbl:'Entrada'}:r.tipo==='salida'?{cls:'badge badge-salida',ico:'📤',lbl:'Salida'}:{cls:'badge badge-traspaso',ico:'🔄',lbl:'Traspaso'};
     const totalAbs=Math.abs(r.total||0);
     return `<tr>
@@ -2291,10 +2330,10 @@ function updateKpiDespachos(){
 }
 
 function downloadDespPlantilla(){
-  const headers = [['Cliente','OF','OC','Descripción 1','Descripción 2','Cant (un)','Peso pallet (kg)','Dimensión pallet (LxAxH cm)','Fecha Despacho (dd-mm-aaaa)','Estado','Guía','Pallet','Observación']];
-  const example = [['Pucobre','20260430 EA4 REV1','43101','305x305x38/7SOLI','HF-SLOT--T1/PO-45',55,124.9,'95x95x120','17-05-2026','DESPACHOS OK','8046',1,'']];
+  const headers = [['Cliente','OF','OC','Descripción 1','Descripción 2','Cant (un)','Peso pallet (kg)','Dimensión pallet (LxAxH cm)','Fecha Ingreso (dd-mm-aaaa)','Fecha Despacho (dd-mm-aaaa)','Estado','Guía','Pallet','Observación']];
+  const example = [['Pucobre','20260430 EA4 REV1','43101','305x305x38/7SOLI','HF-SLOT--T1/PO-45',55,124.9,'95x95x120','11-05-2026','17-05-2026','DESPACHOS OK','8046',1,'']];
   const ws = XLSX.utils.aoa_to_sheet([...headers,...example]);
-  ws['!cols']=[{wch:18},{wch:18},{wch:12},{wch:28},{wch:22},{wch:8},{wch:12},{wch:20},{wch:18},{wch:16},{wch:8},{wch:8},{wch:20}];
+  ws['!cols']=[{wch:18},{wch:18},{wch:12},{wch:28},{wch:22},{wch:8},{wch:12},{wch:20},{wch:18},{wch:18},{wch:16},{wch:8},{wch:8},{wch:20}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Despachos');
   XLSX.writeFile(wb,'plantilla_despachos.xlsx');
@@ -2317,9 +2356,18 @@ async function uploadDespMasivo(input){
         const dim = String(row['Dimensión pallet (LxAxH cm)']||row['Dimension pallet']||'').trim();
         const vol = getVolumenNum(dim);
         const estado = String(row['Estado']||'PENDIENTE').trim().toUpperCase();
+        const fechaIngresoRaw = String(row['Fecha Ingreso (dd-mm-aaaa)']||row['Fecha Ingreso']||'').trim();
+        // Use provided fecha ingreso or today
+        const fechaIngreso = fechaIngresoRaw || now.toLocaleDateString('es-CL');
+        // Parse date for fechaObj ordering - try dd-mm-yyyy format
+        let fechaObj = now.toISOString();
+        if(fechaIngresoRaw){
+          const parts = fechaIngresoRaw.split('-');
+          if(parts.length===3) fechaObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
+        }
         return {
           id:`desp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-          fechaIngreso,fechaObj:now.toISOString(),
+          fechaIngreso, fechaObj,
           cliente:String(row['Cliente']||'').trim(),
           of:String(row['OF']||'').trim(),
           oc:String(row['OC']||'').trim(),
@@ -2328,7 +2376,7 @@ async function uploadDespMasivo(input){
           cant:parseFloat(row['Cant (un)']||row['Cant']||0)||0,
           peso:parseFloat(row['Peso pallet (kg)']||row['Peso']||0)||0,
           dim,vol:parseFloat(vol.toFixed(3)),
-          quarter:getQuarter(now.toISOString()),
+          quarter:getQuarter(fechaObj),
           fdesp:String(row['Fecha Despacho (dd-mm-aaaa)']||row['Fecha Despacho']||'').trim(),
           estado:estado==='OK'||estado==='DESPACHOS OK'?'DESPACHOS OK':estado==='EN TRANSITO'||estado==='EN RUTA'?'EN TRANSITO':'PENDIENTE',
           pallets:parseFloat(row['Pallet']||row['Pallets']||0)||0,
