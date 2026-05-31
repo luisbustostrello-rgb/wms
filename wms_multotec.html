@@ -327,6 +327,7 @@ input[type="file"]{display:none;}
           <button class="dash-filter-btn" onclick="setDashFilter('inventario',this)">📦 Inventario</button>
           <button class="dash-filter-btn" onclick="setDashFilter('movimientos',this)">📥 Movimientos</button>
           <button class="dash-filter-btn" onclick="setDashFilter('traspasos',this)">🔄 Traspasos</button>
+          <button class="dash-filter-btn" onclick="setDashFilter('despachos',this)">🚚 Despachos</button>
         </div>
       </div>
 
@@ -352,34 +353,66 @@ input[type="file"]{display:none;}
       <div id="dash-charts-all">
         <!-- Fila 1 -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
-          <!-- Movimientos últimos 7 días -->
           <div class="dash-chart-card" id="dc-movimientos">
             <div class="dash-chart-title">📥 Movimientos — Últimos 7 días</div>
             <canvas id="chart-movimientos" height="200"></canvas>
           </div>
-          <!-- Stock por bodega -->
           <div class="dash-chart-card" id="dc-inventario">
             <div class="dash-chart-title">📦 Stock Total por Bodega</div>
             <canvas id="chart-bodegas" height="200"></canvas>
           </div>
         </div>
         <!-- Fila 2 -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-          <!-- Top 10 SKUs por valor -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
           <div class="dash-chart-card" id="dc-inventario2">
             <div class="dash-chart-title">💰 Top 10 SKUs por Valor ($)</div>
             <canvas id="chart-top-skus" height="200"></canvas>
           </div>
-          <!-- Traspasos por bodega -->
           <div class="dash-chart-card" id="dc-traspasos">
             <div class="dash-chart-title">🔄 Traspasos — Origen vs Destino</div>
             <canvas id="chart-traspasos" height="200"></canvas>
           </div>
         </div>
+        <!-- Fila 3 — Despachos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px">
+          <div class="dash-chart-card" id="dc-despachos-estado">
+            <div class="dash-chart-title">🚚 Estado de Despachos</div>
+            <canvas id="chart-desp-estado" height="220"></canvas>
+          </div>
+          <div class="dash-chart-card" id="dc-despachos-pallets">
+            <div class="dash-chart-title">📦 Pallets por Mes</div>
+            <canvas id="chart-desp-pallets" height="220"></canvas>
+          </div>
+          <div class="dash-chart-card" id="dc-despachos-guias">
+            <div class="dash-chart-title">📋 Guías por Mes</div>
+            <canvas id="chart-desp-guias" height="220"></canvas>
+          </div>
+        </div>
+        <!-- Fila 4 — Tabla clientes -->
+        <div style="margin-bottom:18px">
+          <div class="dash-chart-card" id="dc-despachos-tabla">
+            <div class="dash-chart-title">👥 Resumen por Cliente</div>
+            <div style="overflow-x:auto">
+              <table id="dash-clientes-table" style="width:100%;border-collapse:collapse;font-size:.84em">
+                <thead>
+                  <tr>
+                    <th style="background:rgba(255,255,255,.15);color:white;padding:9px 12px;text-align:left;font-size:.75em;text-transform:uppercase;letter-spacing:.05em;border-radius:6px 0 0 0">Cliente</th>
+                    <th style="background:rgba(255,255,255,.15);color:white;padding:9px 12px;text-align:right;font-size:.75em;text-transform:uppercase;letter-spacing:.05em">Despachos</th>
+                    <th style="background:rgba(255,255,255,.15);color:white;padding:9px 12px;text-align:right;font-size:.75em;text-transform:uppercase;letter-spacing:.05em">Pallets</th>
+                    <th style="background:rgba(255,255,255,.15);color:white;padding:9px 12px;text-align:right;font-size:.75em;text-transform:uppercase;letter-spacing:.05em">Guías</th>
+                    <th style="background:rgba(255,255,255,.15);color:white;padding:9px 12px;text-align:right;font-size:.75em;text-transform:uppercase;letter-spacing:.05em">Vol. m³</th>
+                    <th style="background:rgba(255,255,255,.15);color:white;padding:9px 12px;text-align:center;font-size:.75em;text-transform:uppercase;letter-spacing:.05em;border-radius:0 6px 0 0">Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-clientes-tbody"></tbody>
+              </table>
+              <div id="dash-clientes-empty" style="text-align:center;padding:30px;color:rgba(255,255,255,.5);font-size:.88em">Sin datos de despacho aún</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-
   <!-- ── INVENTARIO ── -->
   <div class="view" id="view-inventario">
     <div class="main-content">
@@ -1748,10 +1781,12 @@ function setDashFilter(filter, btn){
   document.querySelectorAll('.dash-filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const cards = {
-    'inventario': ['dc-inventario','dc-inventario2'],
+    'inventario':  ['dc-inventario','dc-inventario2'],
     'movimientos': ['dc-movimientos'],
-    'traspasos': ['dc-traspasos'],
-    'all': ['dc-movimientos','dc-inventario','dc-inventario2','dc-traspasos']
+    'traspasos':   ['dc-traspasos'],
+    'despachos':   ['dc-despachos-estado','dc-despachos-pallets','dc-despachos-guias','dc-despachos-tabla'],
+    'all':         ['dc-movimientos','dc-inventario','dc-inventario2','dc-traspasos',
+                    'dc-despachos-estado','dc-despachos-pallets','dc-despachos-guias','dc-despachos-tabla']
   };
   const show = cards[filter] || cards['all'];
   document.querySelectorAll('.dash-chart-card').forEach(c=>{
@@ -1787,6 +1822,10 @@ function updateDashboard(){
     renderChartBodegas();
     renderChartTopSkus();
     renderChartTraspasos();
+    renderChartDespEstado();
+    renderChartDespPallets();
+    renderChartDespGuias();
+    renderTablaClientes();
   }, 100);
 }
 
@@ -1876,6 +1915,99 @@ function renderChartTraspasos(){
       scales:{x:{ticks:{color:'rgba(255,255,255,.65)'},grid:{color:'rgba(255,255,255,.08)'}},
               y:{ticks:{color:'rgba(255,255,255,.65)'},grid:{color:'rgba(255,255,255,.08)'},beginAtZero:true}}}
   });
+}
+
+function renderChartDespEstado(){
+  const ctx = document.getElementById('chart-desp-estado'); if(!ctx) return;
+  destroyChart('desp-estado');
+  const ok    = despachos.filter(d=>d.estado==='DESPACHOS OK').length;
+  const pend  = despachos.filter(d=>d.estado==='PENDIENTE').length;
+  const trans = despachos.filter(d=>d.estado==='EN TRANSITO').length;
+  if(!despachos.length){ return; }
+  _charts['desp-estado'] = new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['Despachos OK','Pendiente','En Tránsito'],
+      datasets:[{data:[ok,pend,trans],
+        backgroundColor:['rgba(22,163,74,.8)','rgba(202,138,4,.8)','rgba(37,99,235,.8)'],
+        borderColor:'rgba(255,255,255,.15)',borderWidth:2}]
+    },
+    options:{responsive:true,
+      plugins:{legend:{position:'bottom',labels:{color:'rgba(255,255,255,.8)',font:{size:11},padding:12}},
+               tooltip:{callbacks:{label:ctx=>{const t=ok+pend+trans;return ` ${ctx.label}: ${ctx.raw} (${t?Math.round(ctx.raw/t*100):0}%)`;}}}}
+    }
+  });
+}
+
+function renderChartDespPallets(){
+  const ctx = document.getElementById('chart-desp-pallets'); if(!ctx) return;
+  destroyChart('desp-pallets');
+  // Agrupar por mes (últimos 6 meses)
+  const meses = [];
+  for(let i=5;i>=0;i--){
+    const d=new Date(); d.setMonth(d.getMonth()-i);
+    meses.push(d.toISOString().substring(0,7));
+  }
+  const labels = meses.map(m=>{const[y,mo]=m.split('-');return `${mo}/${y.slice(-2)}`;});
+  const data = meses.map(m=>despachos.filter(d=>d.fechaObj?.startsWith(m)).reduce((s,d)=>s+(d.pallets||0),0));
+  _charts['desp-pallets'] = new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'Pallets',data,backgroundColor:'rgba(46,158,122,.75)',borderColor:'#2e9e7a',borderWidth:2,borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'rgba(255,255,255,.8)',font:{size:11}}}},
+      scales:{x:{ticks:{color:'rgba(255,255,255,.65)'},grid:{color:'rgba(255,255,255,.08)'}},
+              y:{ticks:{color:'rgba(255,255,255,.65)'},grid:{color:'rgba(255,255,255,.08)'},beginAtZero:true}}}
+  });
+}
+
+function renderChartDespGuias(){
+  const ctx = document.getElementById('chart-desp-guias'); if(!ctx) return;
+  destroyChart('desp-guias');
+  const meses = [];
+  for(let i=5;i>=0;i--){
+    const d=new Date(); d.setMonth(d.getMonth()-i);
+    meses.push(d.toISOString().substring(0,7));
+  }
+  const labels = meses.map(m=>{const[y,mo]=m.split('-');return `${mo}/${y.slice(-2)}`;});
+  const data = meses.map(m=>despachos.filter(d=>d.fechaObj?.startsWith(m)&&d.guia).length);
+  _charts['desp-guias'] = new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'Guías',data,backgroundColor:'rgba(99,102,241,.75)',borderColor:'#6366f1',borderWidth:2,borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'rgba(255,255,255,.8)',font:{size:11}}}},
+      scales:{x:{ticks:{color:'rgba(255,255,255,.65)'},grid:{color:'rgba(255,255,255,.08)'}},
+              y:{ticks:{color:'rgba(255,255,255,.65)'},grid:{color:'rgba(255,255,255,.08)'},beginAtZero:true,ticks:{stepSize:1}}}
+    }
+  });
+}
+
+function renderTablaClientes(){
+  const tbody = document.getElementById('dash-clientes-tbody'); if(!tbody) return;
+  const empty = document.getElementById('dash-clientes-empty');
+  if(!despachos.length){ if(empty) empty.style.display='block'; tbody.innerHTML=''; return; }
+  if(empty) empty.style.display='none';
+  // Agrupar por cliente
+  const clientes = {};
+  despachos.forEach(d=>{
+    const c = d.cliente||'Sin cliente';
+    if(!clientes[c]) clientes[c]={cliente:c,total:0,pallets:0,guias:0,vol:0,ok:0};
+    clientes[c].total++;
+    clientes[c].pallets += d.pallets||0;
+    if(d.guia) clientes[c].guias++;
+    clientes[c].vol += d.vol||0;
+    if(d.estado==='DESPACHOS OK') clientes[c].ok++;
+  });
+  const sorted = Object.values(clientes).sort((a,b)=>b.total-a.total);
+  tbody.innerHTML = sorted.map((c,i)=>`<tr style="border-bottom:1px solid rgba(255,255,255,.08);${i%2?'background:rgba(255,255,255,.04)':''}">
+    <td style="padding:9px 12px;color:white;font-weight:600">${c.cliente}</td>
+    <td style="padding:9px 12px;color:rgba(255,255,255,.8);text-align:right">${c.total}</td>
+    <td style="padding:9px 12px;color:#a8e6c8;text-align:right;font-weight:700">${c.pallets}</td>
+    <td style="padding:9px 12px;color:rgba(255,255,255,.8);text-align:right">${c.guias}</td>
+    <td style="padding:9px 12px;color:rgba(255,255,255,.8);text-align:right">${c.vol.toFixed(2)}</td>
+    <td style="padding:9px 12px;text-align:center">
+      <span style="background:${c.ok===c.total?'rgba(22,163,74,.3)':'rgba(202,138,4,.3)'};color:${c.ok===c.total?'#86efac':'#fcd34d'};padding:2px 10px;border-radius:20px;font-size:.78em;font-weight:700">
+        ${c.ok}/${c.total} OK
+      </span>
+    </td>
+  </tr>`).join('');
 }
 
 // ══════════════════════════════════════════════
