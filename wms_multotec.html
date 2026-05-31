@@ -1770,7 +1770,7 @@ function renderTabla(rows){
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.desc1||'—'}</td>
       <td><span style="background:#e8f5f0;padding:2px 8px;border-radius:5px;font-size:.8em;font-weight:700;font-family:monospace">${r.bodega||'—'}</span></td>
       <td class="right mono" style="font-weight:700;color:${r.cantidad>=0?'#1a7a50':'#c02020'}">${r.cantidad>=0?'+':''}${cantAbs}</td>
-      <td class="right mono" style="color:#4a6a60">${r.pUni>0?fmtMoney(r.pUni):'—'}</td>
+      <td class="right mono" style="color:#4a6a60">${(r.pUniReg||r.pUni)>0?fmtMoney(r.pUniReg||r.pUni):'—'}</td>
       <td class="right mono">${r.pPonderado>0?fmtMoney(r.pPonderado):'—'}</td>
       <td class="right mono" style="font-weight:700">${totalAbs>0?fmtMoney(totalAbs):'—'}</td>
       <td class="right mono" ${saldoClass} style="background:#f0faf8">${saldoAct}</td>
@@ -1805,7 +1805,7 @@ function limpiarFiltros(){
 }
 function exportKardexExcel(){
   if(!kdResultados.length){toast('⚠️ Primero realiza una búsqueda');return;}
-  const ws=XLSX.utils.json_to_sheet(kdResultados.map(r=>({'Fecha':r.fecha,'Tipo':r.tipo,'SKU':r.sku,'Desc.':r.desc1,'Bodega':r.bodega,'Cantidad':r.cantidad,'P.Uni':r.pUni,'P.Pond':r.pPonderado,'Total':r.total,'Motivo':r.motivo,'Guía':r.guia,'Proveedor':r.proveedor})));
+  const ws=XLSX.utils.json_to_sheet(kdResultados.map(r=>({'Fecha':r.fecha,'Tipo':r.tipo,'SKU':r.sku,'Desc.':r.desc1,'Bodega':r.bodega,'Cantidad':r.cantidad,'P.Uni':r.pUniReg||r.pUni,'P.Pond':r.pPonderado,'Total':r.total,'Motivo':r.motivo,'Guía':r.guia,'Proveedor':r.proveedor})));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Kardex');XLSX.writeFile(wb,'kardex.xlsx');
 }
 
