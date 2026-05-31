@@ -2345,7 +2345,7 @@ async function uploadDespMasivo(input){
   const r = new FileReader();
   r.onload = async e => {
     try{
-      const wb = XLSX.read(e.target.result,{type:'array'});
+      const wb = XLSX.read(e.target.result,{type:'array', cellDates:false});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws,{defval:''});
       if(!rows.length){ toast('⚠️ El archivo está vacío'); return; }
@@ -2353,10 +2353,25 @@ async function uploadDespMasivo(input){
       const now = new Date();
       const fechaIngreso = now.toLocaleDateString('es-CL');
       const nuevos = rows.map(row=>{
+        // Helper para convertir fecha Excel (número o string) a string dd-mm-yyyy
+        function parseFechaExcel(val){
+          if(!val) return '';
+          const s = String(val).trim();
+          // Si es número (fecha serial de Excel)
+          if(/^\d{4,5}$/.test(s)){
+            const date = new Date(Math.round((parseFloat(s) - 25569) * 86400 * 1000));
+            const dd = String(date.getUTCDate()).padStart(2,'0');
+            const mm = String(date.getUTCMonth()+1).padStart(2,'0');
+            const yyyy = date.getUTCFullYear();
+            return `${dd}-${mm}-${yyyy}`;
+          }
+          return s;
+        }
         const dim = String(row['Dimensión pallet (LxAxH cm)']||row['Dimension pallet']||'').trim();
         const vol = getVolumenNum(dim);
         const estado = String(row['Estado']||'PENDIENTE').trim().toUpperCase();
-        const fechaIngresoRaw = String(row['Fecha Ingreso (dd-mm-aaaa)']||row['Fecha Ingreso']||'').trim();
+        const fechaIngresoRaw = parseFechaExcel(row['Fecha Ingreso (dd-mm-aaaa)']||row['Fecha Ingreso']||'');
+        const fechaDespachoRaw = parseFechaExcel(row['Fecha Despacho (dd-mm-aaaa)']||row['Fecha Despacho']||'');
         // Use provided fecha ingreso or today
         const fechaIngreso = fechaIngresoRaw || now.toLocaleDateString('es-CL');
         // Parse date for fechaObj ordering - try dd-mm-yyyy format
@@ -2377,7 +2392,7 @@ async function uploadDespMasivo(input){
           peso:parseFloat(row['Peso pallet (kg)']||row['Peso']||0)||0,
           dim,vol:parseFloat(vol.toFixed(3)),
           quarter:getQuarter(fechaObj),
-          fdesp:String(row['Fecha Despacho (dd-mm-aaaa)']||row['Fecha Despacho']||'').trim(),
+          fdesp:fechaDespachoRaw,
           estado:estado==='OK'||estado==='DESPACHOS OK'?'DESPACHOS OK':estado==='EN TRANSITO'||estado==='EN RUTA'?'EN TRANSITO':'PENDIENTE',
           pallets:parseFloat(row['Pallet']||row['Pallets']||0)||0,
           guia:String(row['Guía']||row['Guia']||'').trim(),
