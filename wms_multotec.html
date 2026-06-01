@@ -1229,7 +1229,9 @@ function showView(name,el){
   if(name==='inventario') setTimeout(renderTable,50);
   if(name==='entradas') setTimeout(()=>{renderMovimientos();updateStats();},50);
   if(name==='traspaso') setTimeout(()=>{renderVauchers();updateTrasStats();},50);
-  if(name==='despachos') { setTimeout(()=>{ renderDespachos(); },50); }
+  if(name==='dashboard') setTimeout(updateDashboard,50);
+  if(name==='despachos') setTimeout(()=>{ renderDespachos(); },50);
+  if(name==='usuarios') setTimeout(()=>{ if(currentUser?.rol==='Admin') renderUsuarios(); },50);
 }
 
 // ── LOGO / BG (registrar directo, el script está al final del body) ──
@@ -3001,11 +3003,6 @@ async function guardarMiPass(){
     hideLoading();toast('✅ Contraseña actualizada');
     document.getElementById('modal-mi-pass').classList.remove('open');
   }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
-}
-const _origShowView=showView;
-function showView(name,el){
-  _origShowView(name,el);
-  if(name==='usuarios'&&currentUser?.rol==='Admin') setTimeout(renderUsuarios,50);
 }
 
 initApp();
