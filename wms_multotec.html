@@ -276,8 +276,43 @@ input[type="file"]{display:none;}
 </head>
 <body>
 
-<!-- Loading overlay -->
-<div id="wms-loading"><div class="spinner"></div><div id="wms-loading-msg">Conectando…</div></div>
+<!-- ══ PANTALLA DE LOGIN ══ -->
+<div id="login-screen" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0a1f1f 0%,#0d2b2b 50%,#0a1a2e 100%);display:flex;align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif">
+  <div style="width:100%;max-width:420px;padding:20px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="display:inline-block;background:white;padding:12px 24px;border-radius:14px;margin-bottom:16px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+        <img id="login-logo" src="" style="height:48px;object-fit:contain"
+          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2248%22%3E%3Crect width=%22160%22 height=%2248%22 fill=%22%231a4d4d%22/%3E%3Ctext x=%2280%22 y=%2230%22 font-size=%2216%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22Segoe UI%22%3EMULTOTEC%3C/text%3E%3C/svg%3E'">
+      </div>
+      <div style="color:white;font-size:1.4em;font-weight:800;letter-spacing:.04em">WMS MULTOTEC</div>
+      <div style="color:rgba(255,255,255,.5);font-size:.85em;margin-top:4px">Sistema de Gestión de Bodega</div>
+    </div>
+    <div style="background:rgba(255,255,255,.07);backdrop-filter:blur(20px);border:1.5px solid rgba(255,255,255,.12);border-radius:20px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+      <div style="color:white;font-size:1.05em;font-weight:700;margin-bottom:20px;text-align:center">Iniciar Sesión</div>
+      <div style="margin-bottom:16px">
+        <label style="color:rgba(255,255,255,.65);font-size:.78em;font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Usuario</label>
+        <input id="login-user" type="text" placeholder="Ej: lbustos" autocomplete="username"
+          style="width:100%;padding:12px 16px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:10px;color:white;font-size:.95em;font-family:inherit;outline:none"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="color:rgba(255,255,255,.65);font-size:.78em;font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Contraseña</label>
+        <div style="position:relative">
+          <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+            style="width:100%;padding:12px 16px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:10px;color:white;font-size:.95em;font-family:inherit;outline:none"
+            onkeydown="if(event.key==='Enter')doLogin()">
+          <button onclick="togglePassVis()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1em">👁</button>
+        </div>
+      </div>
+      <div id="login-error" style="background:rgba(192,32,32,.2);border:1px solid rgba(192,32,32,.4);border-radius:8px;padding:10px 14px;color:#fca5a5;font-size:.84em;margin-bottom:14px;display:none"></div>
+      <button onclick="doLogin()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1a7a50,#2e9e7a);color:white;border:none;border-radius:12px;font-size:.95em;font-weight:700;cursor:pointer;font-family:inherit">Ingresar →</button>
+      <div style="text-align:center;margin-top:16px;color:rgba(255,255,255,.35);font-size:.78em">¿Olvidaste tu contraseña? Contacta al administrador</div>
+    </div>
+    <div style="text-align:center;margin-top:20px;color:rgba(255,255,255,.2);font-size:.72em">WMS v2.0 · MULTOTEC · 2026</div>
+  </div>
+</div>
+
+<!-- Loading overlay -->\n<div id="wms-loading"><div class="spinner"></div><div id="wms-loading-msg">Conectando…</div></div>
 
 <!-- Inputs ocultos -->
 <input type="file" id="logo-input" accept="image/*">
@@ -296,18 +331,34 @@ input[type="file"]{display:none;}
     </div>
     <div class="logo-hint">✦ clic para cambiar logo</div>
   </div>
+  <!-- Usuario logueado -->
+  <div id="sidebar-user" style="margin:0 12px 12px;background:rgba(46,158,122,.2);border:1px solid rgba(46,158,122,.3);border-radius:12px;padding:10px 12px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div>
+        <div id="sidebar-user-name" style="color:white;font-size:.84em;font-weight:700"></div>
+        <div id="sidebar-user-rol" style="color:rgba(255,255,255,.5);font-size:.7em;text-transform:uppercase;letter-spacing:.05em"></div>
+      </div>
+      <button onclick="doLogout()" title="Cerrar sesión"
+        style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.78em;font-family:inherit">
+        🚪 Salir
+      </button>
+    </div>
+  </div>
   <div class="menu-section">Principal</div>
   <div class="menu-item active" onclick="showView('dashboard',this)">📊 Dashboard</div>
   <div class="menu-item" onclick="showView('inventario',this)">📦 Inventario</div>
   <div class="menu-item" onclick="showView('entradas',this)">📥 Entrada y Salida</div>
   <div class="menu-item" onclick="showView('traspaso',this)">🔄 Traspaso</div>
   <div class="menu-item" onclick="showView('kardex',this)">📊 Kardex</div>
-  <div class="menu-section">Próximamente</div>
+  <div class="menu-section">Módulos</div>
   <div class="menu-item" onclick="showView('marcas',this)">🏷️ Marcas SKU</div>
   <div class="menu-item" onclick="showView('despachos',this)">🚚 Despachos</div>
   <div class="menu-item" style="opacity:.45;cursor:default">🏢 Bodegas</div>
   <div class="menu-item" style="opacity:.45;cursor:default">✨ Crear SKUs</div>
   <div class="menu-item" style="opacity:.45;cursor:default">📈 Informes</div>
+  <div class="menu-section" id="admin-section" style="display:none">Administración</div>
+  <div class="menu-item" id="admin-btn" onclick="showView('usuarios',this)" style="display:none">👥 Usuarios</div>
+  <div class="menu-item" id="mipass-btn" onclick="openCambiarPass()">🔑 Cambiar contraseña</div>
 </div>
 
 <!-- ══ VISTAS ══ -->
@@ -840,7 +891,108 @@ input[type="file"]{display:none;}
     </div>
   </div>
 
+  <!-- ── USUARIOS ── -->
+  <div class="view" id="view-usuarios">
+    <div class="main-content">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">👥 <span>Gestión de</span> Usuarios</div>
+          <div style="font-size:.8em;color:rgba(255,255,255,.65);margin-top:3px">Solo administradores pueden gestionar usuarios</div>
+        </div>
+        <button class="btn btn-primary" onclick="openUserModal()">＋ Nuevo Usuario</button>
+      </div>
+      <div style="background:white;border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07)">
+        <table style="width:100%;border-collapse:collapse;font-size:.92em">
+          <thead><tr>
+            <th style="background:#1a4d4d;color:white;padding:13px 16px;text-align:left;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Nombre</th>
+            <th style="background:#1a4d4d;color:white;padding:13px 16px;text-align:left;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Usuario</th>
+            <th style="background:#1a4d4d;color:white;padding:13px 16px;text-align:left;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Email</th>
+            <th style="background:#1a4d4d;color:white;padding:13px 16px;text-align:left;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Rol</th>
+            <th style="background:#1a4d4d;color:white;padding:13px 16px;text-align:center;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Estado</th>
+            <th style="background:#1a4d4d;color:white;padding:13px 16px;text-align:left;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Último acceso</th>
+            <th style="background:#1a4d4d;color:white;padding:13px 16px;text-align:center;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Acciones</th>
+          </tr></thead>
+          <tbody id="usuarios-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /views-wrap -->
+
+<!-- Modal nuevo/editar usuario -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal" style="max-width:500px">
+    <h2 id="usuario-modal-title">➕ Nuevo Usuario</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>Nombre completo *</label><input id="u-nombre" placeholder="Ej: Luis Bustos"></div>
+      <div class="form-group"><label>Usuario * <span style="font-size:.8em;color:#6a8a80">(sin espacios)</span></label><input id="u-usuario" placeholder="Ej: lbustos"></div>
+      <div class="form-group"><label>Email</label><input id="u-email" type="email" placeholder="Ej: luis@multotec.com"></div>
+      <div class="form-group"><label>Rol *</label>
+        <select id="u-rol">
+          <option value="Admin">Admin</option>
+          <option value="Supervisor bodega">Supervisor bodega</option>
+          <option value="Gerente de Operaciones">Gerente de Operaciones</option>
+          <option value="Jefe de produccion">Jefe de produccion</option>
+          <option value="Lider mejora continua">Lider mejora continua</option>
+          <option value="Gerente de finanza">Gerente de finanza</option>
+          <option value="Operador">Operador</option>
+          <option value="Solo lectura">Solo lectura</option>
+        </select>
+      </div>
+      <div class="form-group" id="u-pass-group"><label>Contraseña *</label><input id="u-pass" type="password" placeholder="Mínimo 6 caracteres"></div>
+      <div class="form-group"><label>Estado</label>
+        <select id="u-activo">
+          <option value="true">✅ Activo</option>
+          <option value="false">🚫 Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeUserModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUsuario()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal reset contraseña -->
+<div class="modal-overlay" id="modal-reset-pass">
+  <div class="modal" style="max-width:420px">
+    <h2>🔑 Resetear Contraseña</h2>
+    <p style="color:#4a6a60;margin-bottom:16px;font-size:.9em">Usuario: <strong id="reset-user-label"></strong></p>
+    <div class="form-group">
+      <label>Nueva contraseña *</label>
+      <input id="reset-pass-new" type="password" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-reset-pass').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarResetPass()">🔑 Cambiar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cambiar mi contraseña -->
+<div class="modal-overlay" id="modal-mi-pass">
+  <div class="modal" style="max-width:420px">
+    <h2>🔑 Cambiar mi Contraseña</h2>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Contraseña actual *</label>
+      <input id="mipass-actual" type="password" placeholder="Tu contraseña actual">
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Nueva contraseña *</label>
+      <input id="mipass-nueva" type="password" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="form-group">
+      <label>Confirmar nueva contraseña *</label>
+      <input id="mipass-confirmar" type="password" placeholder="Repite la nueva contraseña">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-mi-pass').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMiPass()">🔑 Cambiar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL DESPACHO ══ -->
 <div class="modal-overlay" id="modal-despacho">
@@ -2431,36 +2583,30 @@ document.addEventListener('click', e=>{
   }
 });
 
-async function initApp(){
-  // Navegación siempre disponible — Supabase es opcional
-  addLinea();
-  updateDashboard();
-
-  if(location.protocol==='file:'){
-    const banner=document.createElement('div');
-    banner.style.cssText='position:fixed;top:0;left:230px;right:0;z-index:9990;background:#b45309;color:white;padding:9px 18px;font-size:.84em;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:12px;';
-    banner.innerHTML=`<span>⚠️ Abriste el WMS desde tu disco local — los datos NO se guardarán. Sube el archivo a OneDrive o GitHub Pages para conectar con Supabase.</span><button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:6px;padding:3px 10px;cursor:pointer;font-weight:700">✕</button>`;
-    document.body.appendChild(banner);
-    return;
-  }
-
-  showLoading('Conectando con la base de datos…');
+// Separate data loading
+async function loadAppData(){
+  showLoading('Cargando datos…');
   try{
-    [items,movimientos,traspasos,despachos] = await Promise.all([
-      supaGet('inventario'),
-      supaGetMovs(),
-      supaGetTras(),
-      supaGetDespachos(),
+    [items,movimientos,traspasos,despachos]=await Promise.all([
+      supaGet('inventario'),supaGetMovs(),supaGetTras(),supaGetDespachos()
     ]);
-    correlativo = await supaGetConfig('wms_traspaso_correlativo').then(v=>v?parseInt(v):1);
+    correlativo=await supaGetConfig('wms_traspaso_correlativo').then(v=>v?parseInt(v):1);
     nextId=items.reduce((m,i)=>Math.max(m,i.id||0),0)+1;
     hideLoading();
     updateDashboard();
-    toast('✅ Datos cargados correctamente');
-  }catch(e){
-    hideLoading();
-    toast('⚠️ Sin conexión a Supabase: '+e.message);
-    console.error('Supabase error:',e);
+    toast(`✅ Bienvenido, ${currentUser.nombre}`);
+  }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
+}
+
+async function initApp(){
+  addLinea();
+  const logo=localStorage.getItem('wms_logo_src');
+  if(logo) document.getElementById('login-logo').src=logo;
+  if(location.protocol==='file:'){
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;top:0;left:230px;right:0;z-index:9990;background:#b45309;color:white;padding:9px 18px;font-size:.84em;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+    banner.innerHTML=`<span>⚠️ Abriste el WMS desde tu disco local — los datos NO se guardarán.</span><button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:6px;padding:3px 10px;cursor:pointer;font-weight:700">✕</button>`;
+    document.body.appendChild(banner);
   }
 }
 // ══════════════════════════════════════════════
@@ -2674,6 +2820,193 @@ document.addEventListener('click', e => {
   }
 });
 
+
+// ══════════════════════════════════════════════
+//  AUTENTICACIÓN Y USUARIOS
+// ══════════════════════════════════════════════
+let currentUser = null;
+let editingUserId = null;
+let resetUserId = null;
+
+async function hashPass(pass){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pass));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function supaGetUsuarios(){
+  const r=await fetch(`${SUPA_URL}/rest/v1/usuarios?select=data&order=id`,{headers:SUPA_H});
+  return r.ok?(await r.json()).map(x=>x.data):[];
+}
+async function supaUpsertUsuario(u){
+  await fetch(`${SUPA_URL}/rest/v1/usuarios`,{
+    method:'POST',headers:{...SUPA_H,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify([{id:u.id,data:u}])});
+}
+function togglePassVis(){
+  const inp=document.getElementById('login-pass');
+  inp.type=inp.type==='password'?'text':'password';
+}
+async function doLogin(){
+  const user=document.getElementById('login-user').value.trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value;
+  const errEl=document.getElementById('login-error');
+  errEl.style.display='none';
+  if(!user||!pass){errEl.textContent='Ingresa usuario y contraseña';errEl.style.display='block';return;}
+  const btn=document.querySelector('#login-screen button');
+  if(btn){btn.textContent='Verificando…';btn.disabled=true;}
+  try{
+    const usuarios=await supaGetUsuarios();
+    const found=usuarios.find(u=>u.usuario.toLowerCase()===user);
+    if(!found){errEl.textContent='Usuario no encontrado';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
+    if(found.activo===false){errEl.textContent='Usuario inactivo. Contacta al administrador';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
+    const hash=await hashPass(pass);
+    if(hash!==found.passHash){errEl.textContent='Contraseña incorrecta';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
+    currentUser=found;
+    found.ultimoAcceso=new Date().toLocaleString('es-CL');
+    await supaUpsertUsuario(found);
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('sidebar-user').style.display='block';
+    document.getElementById('sidebar-user-name').textContent=found.nombre;
+    document.getElementById('sidebar-user-rol').textContent=found.rol;
+    if(found.rol==='Admin'){
+      document.getElementById('admin-section').style.display='';
+      document.getElementById('admin-btn').style.display='';
+    }
+    await loadAppData();
+  }catch(e){
+    errEl.textContent='Error: '+e.message;errEl.style.display='block';
+    if(btn){btn.textContent='Ingresar →';btn.disabled=false;}
+  }
+}
+function doLogout(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  currentUser=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-error').style.display='none';
+  document.getElementById('sidebar-user').style.display='none';
+  document.getElementById('admin-section').style.display='none';
+  document.getElementById('admin-btn').style.display='none';
+  items=[];movimientos=[];traspasos=[];despachos=[];
+}
+async function renderUsuarios(){
+  const usuarios=await supaGetUsuarios();
+  const tbody=document.getElementById('usuarios-tbody');
+  if(!tbody) return;
+  tbody.innerHTML=usuarios.map(u=>`<tr style="border-bottom:1px solid #eef4f2">
+    <td style="padding:11px 16px;font-weight:700;color:#1a2e2a">${u.nombre}</td>
+    <td style="padding:11px 16px;font-family:monospace;font-weight:600;color:#1a4d4d">${u.usuario}</td>
+    <td style="padding:11px 16px;color:#4a6a60;font-size:.88em">${u.email||'—'}</td>
+    <td style="padding:11px 16px"><span style="background:#e8f5f0;color:#1a4d4d;padding:3px 10px;border-radius:20px;font-size:.78em;font-weight:700">${u.rol}</span></td>
+    <td style="padding:11px 16px;text-align:center"><span style="background:${u.activo!==false?'#dcfce7':'#fee2e2'};color:${u.activo!==false?'#166534':'#991b1b'};padding:3px 10px;border-radius:20px;font-size:.78em;font-weight:700">${u.activo!==false?'✅ Activo':'🚫 Inactivo'}</span></td>
+    <td style="padding:11px 16px;color:#6a8a80;font-size:.84em">${u.ultimoAcceso||'—'}</td>
+    <td style="padding:11px 16px;text-align:center;white-space:nowrap">
+      <button onclick="openUserModal('${u.id}')" class="btn btn-ghost btn-sm">✏️ Editar</button>
+      <button onclick="openResetPass('${u.id}')" class="btn btn-ghost btn-sm">🔑 Reset</button>
+      ${u.id!==currentUser?.id?`<button onclick="toggleUserActivo('${u.id}')" class="btn ${u.activo!==false?'btn-danger':'btn-primary'} btn-sm">${u.activo!==false?'🚫 Desactivar':'✅ Activar'}</button>`:''}
+    </td>
+  </tr>`).join('');
+}
+function openUserModal(id=null){
+  editingUserId=id;
+  document.getElementById('usuario-modal-title').textContent=id?'✏️ Editar Usuario':'➕ Nuevo Usuario';
+  document.getElementById('u-pass-group').style.display=id?'none':'flex';
+  if(id){
+    supaGetUsuarios().then(us=>{
+      const u=us.find(x=>x.id===id);if(!u)return;
+      document.getElementById('u-nombre').value=u.nombre||'';
+      document.getElementById('u-usuario').value=u.usuario||'';
+      document.getElementById('u-email').value=u.email||'';
+      document.getElementById('u-rol').value=u.rol||'Operador';
+      document.getElementById('u-activo').value=String(u.activo!==false);
+    });
+  } else {
+    ['u-nombre','u-usuario','u-email','u-pass'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+    document.getElementById('u-rol').value='Operador';
+    document.getElementById('u-activo').value='true';
+  }
+  document.getElementById('modal-usuario').classList.add('open');
+}
+function closeUserModal(){document.getElementById('modal-usuario').classList.remove('open');editingUserId=null;}
+async function saveUsuario(){
+  const nombre=document.getElementById('u-nombre').value.trim();
+  const usuario=document.getElementById('u-usuario').value.trim().toLowerCase();
+  if(!nombre||!usuario){toast('⚠️ Nombre y usuario son obligatorios');return;}
+  showLoading('Guardando…');
+  try{
+    const usuarios=await supaGetUsuarios();
+    let u=editingUserId?usuarios.find(x=>x.id===editingUserId)||{id:editingUserId}:{id:`usr_${Date.now()}`};
+    if(!editingUserId){
+      if(usuarios.find(x=>x.usuario.toLowerCase()===usuario)){hideLoading();toast('⚠️ Usuario ya existe');return;}
+      const pass=document.getElementById('u-pass').value;
+      if(!pass||pass.length<6){hideLoading();toast('⚠️ Contraseña mínimo 6 caracteres');return;}
+      u.passHash=await hashPass(pass);
+    }
+    u.nombre=nombre;u.usuario=usuario;
+    u.email=document.getElementById('u-email').value.trim();
+    u.rol=document.getElementById('u-rol').value;
+    u.activo=document.getElementById('u-activo').value==='true';
+    await supaUpsertUsuario(u);
+    hideLoading();toast(editingUserId?'✅ Usuario actualizado':'✅ Usuario creado');
+    closeUserModal();renderUsuarios();
+  }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
+}
+function openResetPass(id){
+  resetUserId=id;
+  supaGetUsuarios().then(us=>{
+    const u=us.find(x=>x.id===id);
+    document.getElementById('reset-user-label').textContent=u?.nombre||id;
+    document.getElementById('reset-pass-new').value='';
+    document.getElementById('modal-reset-pass').classList.add('open');
+  });
+}
+async function confirmarResetPass(){
+  const pass=document.getElementById('reset-pass-new').value;
+  if(!pass||pass.length<6){toast('⚠️ Mínimo 6 caracteres');return;}
+  showLoading('Actualizando…');
+  try{
+    const us=await supaGetUsuarios();
+    const u=us.find(x=>x.id===resetUserId);
+    if(!u){hideLoading();toast('❌ No encontrado');return;}
+    u.passHash=await hashPass(pass);
+    await supaUpsertUsuario(u);
+    hideLoading();toast('✅ Contraseña reseteada');
+    document.getElementById('modal-reset-pass').classList.remove('open');
+  }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
+}
+async function toggleUserActivo(id){
+  showLoading('Actualizando…');
+  try{
+    const us=await supaGetUsuarios();const u=us.find(x=>x.id===id);if(!u){hideLoading();return;}
+    u.activo=!u.activo;await supaUpsertUsuario(u);
+    hideLoading();toast(`✅ Usuario ${u.activo?'activado':'desactivado'}`);renderUsuarios();
+  }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
+}
+function openCambiarPass(){
+  ['mipass-actual','mipass-nueva','mipass-confirmar'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('modal-mi-pass').classList.add('open');
+}
+async function guardarMiPass(){
+  const actual=document.getElementById('mipass-actual').value;
+  const nueva=document.getElementById('mipass-nueva').value;
+  const conf=document.getElementById('mipass-confirmar').value;
+  if(!actual||!nueva||!conf){toast('⚠️ Completa todos los campos');return;}
+  if(nueva!==conf){toast('⚠️ Las contraseñas no coinciden');return;}
+  if(nueva.length<6){toast('⚠️ Mínimo 6 caracteres');return;}
+  if(await hashPass(actual)!==currentUser.passHash){toast('❌ Contraseña actual incorrecta');return;}
+  showLoading('Guardando…');
+  try{
+    currentUser.passHash=await hashPass(nueva);
+    await supaUpsertUsuario(currentUser);
+    hideLoading();toast('✅ Contraseña actualizada');
+    document.getElementById('modal-mi-pass').classList.remove('open');
+  }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
+}
+const _origShowView=showView;
+function showView(name,el){
+  _origShowView(name,el);
+  if(name==='usuarios'&&currentUser?.rol==='Admin') setTimeout(renderUsuarios,50);
+}
 
 initApp();
 </script>
