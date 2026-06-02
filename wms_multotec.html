@@ -3011,65 +3011,104 @@ function imprimirMarcas(){
   const preview=document.getElementById('marcas-preview');
   if(!preview.children.length){toast('⚠️ Agrega al menos un SKU para imprimir');return;}
 
-  let etiquetasHTML='';
-  [...preview.children].forEach(card=>{
-    const clone=card.cloneNode(true);
-    // Replace ALL canvas with img (remove original canvas to avoid duplication)
-    clone.querySelectorAll('canvas').forEach((canvas,i)=>{
-      const original=card.querySelectorAll('canvas')[i];
-      const img=document.createElement('img');
-      img.src=original?original.toDataURL():'';
-      img.style.cssText='width:200px;height:200px;display:block;';
-      canvas.replaceWith(img);
-    });
-    // Remove any leftover canvas elements
-    clone.querySelectorAll('canvas').forEach(c=>c.remove());
-    etiquetasHTML+=`<div class="etiqueta-wrap">${clone.outerHTML}</div>`;
+  const logoSrc=localStorage.getItem('wms_logo_src')||'';
+  let paginasHTML='';
+
+  [...preview.children].forEach((card,i)=>{
+    const row=marcasRows[i];
+    if(!row) return;
+
+    // Get QR as base64 image
+    const canvas=card.querySelector('canvas');
+    const qrSrc=canvas?canvas.toDataURL():'';
+
+    paginasHTML+=`
+    <div class="pagina">
+      <!-- Header -->
+      <div class="header">
+        ${logoSrc?`<img src="${logoSrc}" style="height:50px;object-fit:contain;background:white;padding:5px 10px;border-radius:8px">`:'<div style="font-size:1.1em;font-weight:900;color:white;letter-spacing:.06em">MULTOTEC</div>'}
+        <div style="font-size:.75em;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.1em">Identificación de Producto</div>
+      </div>
+      <!-- Body -->
+      <div class="body">
+        <div class="info">
+          <div class="sku">${row.sku}</div>
+          <div class="divider"></div>
+          <div class="desc1">${row.desc1||'—'}</div>
+          ${row.desc2?`<div class="desc2">${row.desc2}</div>`:''}
+          ${row.cat?`<div class="cat">${row.cat}</div>`:''}
+          <div class="cant-box">
+            <span class="cant-lbl">Cantidad</span>
+            <span class="cant-val">${row.qty} <span class="cant-um">${row.um}</span></span>
+          </div>
+        </div>
+        <div class="qr-area">
+          ${qrSrc?`<img src="${qrSrc}" class="qr-img">`:'<div style="width:160px;height:160px;background:#eee;border-radius:8px"></div>'}
+          <div class="qr-txt">Escanea para Ingresar</div>
+        </div>
+      </div>
+    </div>`;
   });
 
   const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas SKU - MULTOTEC</title>
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas - MULTOTEC</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Segoe UI',sans-serif;background:white;}
-    .etiquetas-grid{display:flex;flex-wrap:wrap;gap:20px;padding:20px;background:#f5f8f7;}
-    .etiqueta-wrap{width:380px;}
+    body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f4f3;}
+
+    /* ── PANTALLA ── */
+    .pagina{
+      width:500px;margin:20px auto;background:white;
+      border-radius:16px;border:2px solid #1a4d4d;
+      overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.15);
+    }
+    .header{
+      background:linear-gradient(135deg,#1a4d4d,#2e9e7a);
+      padding:14px 22px;display:flex;align-items:center;justify-content:space-between;
+    }
+    .body{padding:24px 26px;display:flex;gap:20px;align-items:center;}
+    .info{flex:1;min-width:0;}
+    .sku{font-size:2.4em;font-weight:900;color:#1a4d4d;font-family:monospace;letter-spacing:.02em;line-height:1;}
+    .divider{height:3px;background:linear-gradient(90deg,#2e9e7a,transparent);border-radius:2px;margin:10px 0;}
+    .desc1{font-size:1em;font-weight:700;color:#1a2e2a;margin-bottom:3px;}
+    .desc2{font-size:.88em;color:#6a8a80;margin-bottom:6px;}
+    .cat{display:inline-block;background:#e8f5f0;color:#1a4d4d;font-size:.78em;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;margin-bottom:12px;}
+    .cant-box{background:#f0faf6;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+    .cant-lbl{font-size:.78em;font-weight:700;color:#6a8a80;text-transform:uppercase;letter-spacing:.05em;}
+    .cant-val{font-size:1.4em;font-weight:900;color:#1a4d4d;}
+    .cant-um{font-size:.6em;font-weight:600;}
+    .qr-area{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
+    .qr-img{width:150px;height:150px;border:1.5px solid #d0e8dc;border-radius:10px;padding:5px;background:white;}
+    .qr-txt{font-size:.72em;font-weight:600;color:#6a8a80;text-align:center;margin-top:4px;}
+
+    /* ── IMPRESIÓN ── */
     @media print{
-      body{background:white;padding:0;margin:0;}
-      .etiquetas-grid{display:block;padding:0;background:white;}
-      .etiqueta-wrap{
-        width:100%;
+      body{background:white;}
+      .pagina{
+        width:100%;margin:0;
+        border-radius:0;border:none;box-shadow:none;
         page-break-after:always;break-after:page;
-        height:100vh;
-        display:flex;align-items:center;justify-content:center;
+        min-height:100vh;display:flex;flex-direction:column;
       }
-      .etiqueta-card{
-        width:90%!important;max-width:600px;
-        border-radius:16px!important;
-        border:2px solid #1a4d4d!important;
-        overflow:hidden;
-        box-shadow:none!important;
+      .header{padding:20px 32px;flex-shrink:0;}
+      .header img{height:55px!important;}
+      .body{
+        flex:1;padding:40px 44px;gap:40px;
+        align-items:center;justify-content:space-between;
       }
-      /* Header */
-      .etiqueta-card>div:first-child{padding:16px 24px!important;}
-      .etiqueta-card>div:first-child img{height:48px!important;}
-      /* Body */
-      .etiqueta-card>div:last-child{padding:24px 28px!important;gap:24px!important;}
-      /* SKU */
-      .etiqueta-card>div:last-child>div:first-child>div:first-child{font-size:3em!important;}
-      /* Desc */
-      .etiqueta-card>div:last-child>div:first-child>div:nth-child(3){font-size:1.1em!important;}
-      .etiqueta-card>div:last-child>div:first-child>div:nth-child(4){font-size:.95em!important;}
-      /* Cantidad */
-      .etiqueta-card>div:last-child>div:first-child>div:last-child{padding:10px 16px!important;}
-      .etiqueta-card>div:last-child>div:first-child>div:last-child span:last-child{font-size:1.6em!important;}
-      /* QR */
-      img{width:180px!important;height:180px!important;display:block;}
-      canvas{display:none!important;}
+      .sku{font-size:3.5em;}
+      .desc1{font-size:1.2em;}
+      .desc2{font-size:1em;}
+      .cat{font-size:.88em;padding:5px 16px;}
+      .cant-box{padding:14px 20px;margin-top:16px;}
+      .cant-lbl{font-size:.88em;}
+      .cant-val{font-size:1.8em;}
+      .qr-img{width:200px;height:200px;}
+      .qr-txt{font-size:.85em;}
       @page{size:A4 portrait;margin:0;}
     }
   </style></head><body>
-  <div class="etiquetas-grid">${etiquetasHTML}</div>
+  ${paginasHTML}
   <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`);
   win.document.close();
