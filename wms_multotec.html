@@ -3017,36 +3017,40 @@ function imprimirMarcas(){
   [...preview.children].forEach((card,i)=>{
     const row=marcasRows[i];
     if(!row) return;
-
-    // Get QR as base64 image
     const canvas=card.querySelector('canvas');
     const qrSrc=canvas?canvas.toDataURL():'';
 
     paginasHTML+=`
     <div class="pagina">
-      <!-- Header -->
-      <div class="header">
-        ${logoSrc?`<img src="${logoSrc}" style="height:50px;object-fit:contain;background:white;padding:5px 10px;border-radius:8px">`:'<div style="font-size:1.1em;font-weight:900;color:white;letter-spacing:.06em">MULTOTEC</div>'}
-        <div style="font-size:.75em;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.1em">Identificación de Producto</div>
-      </div>
-      <!-- Body -->
-      <div class="body">
-        <div class="info">
-          <div class="sku">${row.sku}</div>
-          <div class="divider"></div>
-          <div class="desc1">${row.desc1||'—'}</div>
-          ${row.desc2?`<div class="desc2">${row.desc2}</div>`:''}
-          ${row.cat?`<div class="cat">${row.cat}</div>`:''}
-          <div class="cant-box">
-            <span class="cant-lbl">Cantidad</span>
-            <span class="cant-val">${row.qty} <span class="cant-um">${row.um}</span></span>
-          </div>
-        </div>
-        <div class="qr-area">
-          ${qrSrc?`<img src="${qrSrc}" class="qr-img">`:'<div style="width:160px;height:160px;background:#eee;border-radius:8px"></div>'}
-          <div class="qr-txt">Escanea para Ingresar</div>
-        </div>
-      </div>
+      <table class="etiqueta-tabla">
+        <!-- FILA 1: Logo | SKU grande | QR -->
+        <tr class="fila-top">
+          <td class="celda-logo">
+            ${logoSrc?`<img src="${logoSrc}" style="max-height:60px;max-width:120px;object-fit:contain">`:'<div style="font-size:1.1em;font-weight:900;color:#1a4d4d">MULTOTEC</div>'}
+          </td>
+          <td class="celda-sku-label">SKU</td>
+          <td class="celda-sku-num">${row.sku}</td>
+          <td class="celda-qr" rowspan="4">
+            ${qrSrc?`<img src="${qrSrc}" style="width:110px;height:110px">`:''}
+            <div style="font-size:.65em;color:#666;margin-top:4px;text-align:center">Escanea para<br>Ingresar</div>
+          </td>
+        </tr>
+        <!-- FILA 2: DESC 1 -->
+        <tr class="fila-desc">
+          <td class="celda-lbl" colspan="1">DESC 1</td>
+          <td class="celda-val" colspan="2">${row.desc1||'—'}</td>
+        </tr>
+        <!-- FILA 3: DESC 2 -->
+        <tr class="fila-desc">
+          <td class="celda-lbl">DESC 2</td>
+          <td class="celda-val" colspan="2">${row.desc2||'—'}</td>
+        </tr>
+        <!-- FILA 4: CANT -->
+        <tr class="fila-cant">
+          <td class="celda-lbl">CANT</td>
+          <td class="celda-cant-val" colspan="2">${row.qty} <span class="um-txt">${row.um}</span></td>
+        </tr>
+      </table>
     </div>`;
   });
 
@@ -3054,57 +3058,81 @@ function imprimirMarcas(){
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas - MULTOTEC</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f4f3;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f3;padding:20px;}
 
-    /* ── PANTALLA ── */
-    .pagina{
-      width:500px;margin:20px auto;background:white;
-      border-radius:16px;border:2px solid #1a4d4d;
-      overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.15);
-    }
-    .header{
-      background:linear-gradient(135deg,#1a4d4d,#2e9e7a);
-      padding:14px 22px;display:flex;align-items:center;justify-content:space-between;
-    }
-    .body{padding:24px 26px;display:flex;gap:20px;align-items:center;}
-    .info{flex:1;min-width:0;}
-    .sku{font-size:2.4em;font-weight:900;color:#1a4d4d;font-family:monospace;letter-spacing:.02em;line-height:1;}
-    .divider{height:3px;background:linear-gradient(90deg,#2e9e7a,transparent);border-radius:2px;margin:10px 0;}
-    .desc1{font-size:1em;font-weight:700;color:#1a2e2a;margin-bottom:3px;}
-    .desc2{font-size:.88em;color:#6a8a80;margin-bottom:6px;}
-    .cat{display:inline-block;background:#e8f5f0;color:#1a4d4d;font-size:.78em;font-weight:700;padding:3px 12px;border-radius:20px;text-transform:uppercase;margin-bottom:12px;}
-    .cant-box{background:#f0faf6;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
-    .cant-lbl{font-size:.78em;font-weight:700;color:#6a8a80;text-transform:uppercase;letter-spacing:.05em;}
-    .cant-val{font-size:1.4em;font-weight:900;color:#1a4d4d;}
-    .cant-um{font-size:.6em;font-weight:600;}
-    .qr-area{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
-    .qr-img{width:150px;height:150px;border:1.5px solid #d0e8dc;border-radius:10px;padding:5px;background:white;}
-    .qr-txt{font-size:.72em;font-weight:600;color:#6a8a80;text-align:center;margin-top:4px;}
+    .pagina{margin:0 auto 30px;max-width:700px;}
 
-    /* ── IMPRESIÓN ── */
+    .etiqueta-tabla{
+      width:100%;border-collapse:collapse;
+      border:2.5px solid #1a4d4d;
+      background:white;
+      border-radius:8px;overflow:hidden;
+    }
+    .etiqueta-tabla td{border:1.5px solid #1a4d4d;vertical-align:middle;}
+
+    /* Fila top */
+    .fila-top td{height:80px;}
+    .celda-logo{
+      width:140px;padding:10px 14px;text-align:center;
+      background:white;
+    }
+    .celda-sku-label{
+      width:70px;padding:8px 12px;text-align:center;
+      font-size:.85em;font-weight:800;color:#1a4d4d;
+      text-transform:uppercase;letter-spacing:.05em;
+      background:#f0faf6;
+    }
+    .celda-sku-num{
+      padding:8px 16px;text-align:center;
+      font-size:2.8em;font-weight:900;color:#1a4d4d;
+      font-family:'Courier New',monospace;letter-spacing:.04em;
+    }
+    .celda-qr{
+      width:140px;padding:10px;text-align:center;
+      background:#fafcfb;
+      border-left:2.5px solid #1a4d4d;
+    }
+
+    /* Filas desc */
+    .fila-desc td{height:55px;}
+    .celda-lbl{
+      width:80px;padding:8px 12px;text-align:center;
+      font-size:.82em;font-weight:800;color:#1a4d4d;
+      text-transform:uppercase;letter-spacing:.05em;
+      background:#f0faf6;
+    }
+    .celda-val{
+      padding:8px 16px;text-align:center;
+      font-size:1.15em;font-weight:700;color:#1a2e2a;
+    }
+
+    /* Fila cant */
+    .fila-cant td{height:65px;}
+    .celda-cant-val{
+      padding:8px 16px;text-align:center;
+      font-size:2em;font-weight:900;color:#1a4d4d;
+    }
+    .um-txt{font-size:.55em;font-weight:600;color:#6a8a80;margin-left:6px;}
+
+    /* IMPRESIÓN */
     @media print{
-      body{background:white;}
+      body{background:white;padding:0;}
       .pagina{
-        width:100%;margin:0;
-        border-radius:0;border:none;box-shadow:none;
+        max-width:100%;margin:0;
         page-break-after:always;break-after:page;
-        min-height:100vh;display:flex;flex-direction:column;
+        display:flex;align-items:center;justify-content:center;
+        min-height:100vh;padding:12mm;
       }
-      .header{padding:20px 32px;flex-shrink:0;}
-      .header img{height:55px!important;}
-      .body{
-        flex:1;padding:40px 44px;gap:40px;
-        align-items:center;justify-content:space-between;
-      }
-      .sku{font-size:3.5em;}
-      .desc1{font-size:1.2em;}
-      .desc2{font-size:1em;}
-      .cat{font-size:.88em;padding:5px 16px;}
-      .cant-box{padding:14px 20px;margin-top:16px;}
-      .cant-lbl{font-size:.88em;}
-      .cant-val{font-size:1.8em;}
-      .qr-img{width:200px;height:200px;}
-      .qr-txt{font-size:.85em;}
+      .etiqueta-tabla{border:3px solid #1a4d4d;width:100%;}
+      .etiqueta-tabla td{border:2px solid #1a4d4d;}
+      .celda-sku-num{font-size:3.5em;}
+      .fila-top td{height:90px;}
+      .fila-desc td{height:65px;}
+      .celda-val{font-size:1.3em;}
+      .fila-cant td{height:75px;}
+      .celda-cant-val{font-size:2.5em;}
+      .celda-qr img{width:130px;height:130px;}
+      .celda-logo img{max-height:70px;}
       @page{size:A4 portrait;margin:0;}
     }
   </style></head><body>
