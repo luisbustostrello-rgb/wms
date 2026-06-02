@@ -2987,7 +2987,7 @@ function refreshPreview(){
           <span style="font-size:1.2em;font-weight:800;color:#1a4d4d">${row.qty} <span style="font-size:.72em;font-weight:600">${row.um}</span></span>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-          <div id="qr-new-${row.id}" style="padding:8px;background:white;border:1.5px solid #d0e8dc;border-radius:10px"></div>
+          <div id="qr-new-${row.id}" style="width:130px;height:130px;padding:6px;background:white;border:1.5px solid #d0e8dc;border-radius:10px;overflow:hidden"></div>
           <div style="font-size:.75em;font-weight:600;color:#6a8a80;letter-spacing:.04em">Escanea para Ingresar</div>
         </div>
       </div>`;
@@ -3005,30 +3005,68 @@ function refreshPreview(){
 function imprimirMarcas(){
   const preview=document.getElementById('marcas-preview');
   if(!preview.children.length){toast('⚠️ Agrega al menos un SKU para imprimir');return;}
+
   let etiquetasHTML='';
   [...preview.children].forEach(card=>{
     const clone=card.cloneNode(true);
-    card.querySelectorAll('canvas').forEach((canvas,i)=>{
+    // Replace ALL canvas with img (remove original canvas to avoid duplication)
+    clone.querySelectorAll('canvas').forEach((canvas,i)=>{
+      const original=card.querySelectorAll('canvas')[i];
       const img=document.createElement('img');
-      img.src=canvas.toDataURL();
-      const cloneCanvas=clone.querySelectorAll('canvas')[i];
-      if(cloneCanvas) cloneCanvas.replaceWith(img);
+      img.src=original?original.toDataURL():'';
+      img.style.cssText='width:200px;height:200px;display:block;';
+      canvas.replaceWith(img);
     });
-    etiquetasHTML+=clone.outerHTML;
+    // Remove any leftover canvas elements
+    clone.querySelectorAll('canvas').forEach(c=>c.remove());
+    etiquetasHTML+=`<div class="etiqueta-wrap">${clone.outerHTML}</div>`;
   });
+
   const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas SKU - MULTOTEC</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Segoe UI',sans-serif;background:#f5f8f7;padding:20px;}
-    .etiquetas-grid{display:flex;flex-wrap:wrap;gap:20px;}
-    .etiqueta-card{page-break-inside:avoid;break-inside:avoid;}
+    body{font-family:'Segoe UI',sans-serif;background:white;}
+
+    /* Pantalla: grid de tarjetas */
+    .etiquetas-grid{display:flex;flex-wrap:wrap;gap:20px;padding:20px;background:#f5f8f7;}
+    .etiqueta-wrap{width:360px;}
+
+    /* Impresión: una etiqueta por hoja, tamaño completo */
     @media print{
-      body{background:white;padding:8mm;}
-      .etiquetas-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10mm;}
-      .etiqueta-card{width:100%!important;border-radius:8px!important;box-shadow:none!important;border:1.5px solid #ccc!important;}
-      img{max-width:160px!important;max-height:160px!important;}
-      @page{size:A4 portrait;margin:8mm;}
+      body{background:white;padding:0;margin:0;}
+      .etiquetas-grid{display:block;padding:0;gap:0;background:white;}
+      .etiqueta-wrap{
+        width:100%;height:100vh;
+        page-break-after:always;break-after:page;
+        display:flex;align-items:stretch;
+      }
+      .etiqueta-wrap .etiqueta-card{
+        width:100%!important;height:100%!important;
+        border-radius:0!important;box-shadow:none!important;
+        border:none!important;display:flex;flex-direction:column;
+      }
+      /* Header más alto */
+      .etiqueta-card > div:first-child{
+        padding:20px 28px!important;
+        flex-shrink:0;
+      }
+      /* Body ocupa todo el espacio */
+      .etiqueta-card > div:last-child{
+        flex:1;padding:28px 32px!important;
+        display:flex;flex-direction:column;justify-content:space-between;
+      }
+      /* SKU más grande */
+      .etiqueta-card > div:last-child > div:first-child{
+        font-size:2.2em!important;
+      }
+      /* QR centrado y grande */
+      img{
+        width:260px!important;height:260px!important;
+        display:block;margin:0 auto;
+      }
+      canvas{display:none!important;}
+      @page{size:A4 portrait;margin:0;}
     }
   </style></head><body>
   <div class="etiquetas-grid">${etiquetasHTML}</div>
