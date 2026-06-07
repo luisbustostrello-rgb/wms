@@ -524,7 +524,7 @@ input[type="file"]{display:none;}
         </select>
         <select class="filter-select" id="filter-stock" onchange="renderTable()">
           <option value="">Todos los stocks</option>
-          <option value="ok">✅ Stock OK (≥5)</option>
+          <option value="ok">✅ Con Stock</option>
           <option value="low">⚠️ Stock Bajo (1-4)</option>
           <option value="crit">🔴 Sin Stock (0)</option>
         </select>
@@ -1426,7 +1426,7 @@ function renderTable(){
   if(bodega) list=list.filter(i=>(i[bodega]||0)>0);
   if(stockFilt){
     const cantFisico=i=>(i.bu1||0)+(i.bu2||0)+(i.bu3||0)+(i.bu4||0)+(i.bu5||0);
-    if(stockFilt==='ok')   list=list.filter(i=>cantFisico(i)>=5);
+    if(stockFilt==='ok')   list=list.filter(i=>cantFisico(i)>0);
     if(stockFilt==='low')  list=list.filter(i=>cantFisico(i)>0&&cantFisico(i)<5);
     if(stockFilt==='crit') list=list.filter(i=>cantFisico(i)===0);
   }
