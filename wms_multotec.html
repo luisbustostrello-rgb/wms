@@ -514,6 +514,20 @@ input[type="file"]{display:none;}
       <div class="toolbar">
         <input class="search-box" id="search-input" placeholder="🔍 Buscar por SKU o Descripción…" oninput="renderTable()">
         <select class="filter-select" id="filter-cat" onchange="renderTable()"><option value="">Todas las categorías</option></select>
+        <select class="filter-select" id="filter-bodega" onchange="renderTable()">
+          <option value="">Todas las bodegas</option>
+          <option value="bu1">BU1</option>
+          <option value="bu2">BU2</option>
+          <option value="bu3">BU3</option>
+          <option value="bu4">BU4</option>
+          <option value="bu5">BU5</option>
+        </select>
+        <select class="filter-select" id="filter-stock" onchange="renderTable()">
+          <option value="">Todos los stocks</option>
+          <option value="ok">✅ Stock OK (≥5)</option>
+          <option value="low">⚠️ Stock Bajo (1-4)</option>
+          <option value="crit">🔴 Sin Stock (0)</option>
+        </select>
         <button class="btn btn-danger btn-sm" id="delete-selected-btn" style="display:none" onclick="deleteSelected()">🗑 Eliminar seleccionados</button>
       </div>
       <div class="table-wrap">
@@ -1130,6 +1144,8 @@ input[type="file"]{display:none;}
     <h2>✏️ Editar Movimiento</h2>
     <input type="hidden" id="edit-mov-id">
     <div class="form-grid">
+      <div class="form-group"><label>SKU</label><input id="edit-mov-sku" placeholder="Ej: SKU-001"></div>
+      <div class="form-group"><label>Cantidad</label><input id="edit-mov-qty" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>N° Guía / Documento</label><input id="edit-mov-guia" placeholder="Ej: GD-20250528"></div>
       <div class="form-group"><label>Proveedor / Cliente</label>
         <select id="edit-mov-proveedor" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:.9em;font-family:inherit;outline:none;background:white;width:100%">
@@ -1402,9 +1418,17 @@ async function saveInv(){
 function renderTable(){
   const q=(document.getElementById('search-input')||{value:''}).value.trim().toLowerCase();
   const cat=(document.getElementById('filter-cat')||{value:''}).value;
+  const bodega=(document.getElementById('filter-bodega')||{value:''}).value;
+  const stockFilt=(document.getElementById('filter-stock')||{value:''}).value;
   let list=[...items];
   if(q) list=list.filter(i=>i.sku.toLowerCase().includes(q)||(i.desc1||'').toLowerCase().includes(q));
   if(cat) list=list.filter(i=>i.categoria===cat);
+  if(bodega) list=list.filter(i=>(i[bodega]||0)>0);
+  if(stockFilt){
+    if(stockFilt==='ok')   list=list.filter(i=>cantTotal(i)>=5);
+    if(stockFilt==='low')  list=list.filter(i=>cantTotal(i)>0&&cantTotal(i)<5);
+    if(stockFilt==='crit') list=list.filter(i=>cantTotal(i)===0);
+  }
   list.sort((a,b)=>{
     let va=a[sortKey]??0,vb=b[sortKey]??0;
     if(sortKey==='cantTotal'){va=cantTotal(a);vb=cantTotal(b);}
@@ -2541,6 +2565,8 @@ function openEditMov(id){
   const mov=movimientos.find(m=>m.id===id);
   if(!mov) return;
   document.getElementById('edit-mov-id').value=id;
+  document.getElementById('edit-mov-sku').value=mov.sku||'';
+  document.getElementById('edit-mov-qty').value=mov.qty??mov.cantidad??'';
   document.getElementById('edit-mov-guia').value=mov.guia||'';
   document.getElementById('edit-mov-obs').value=mov.obs||'';
   fillProveedorSelect('edit-mov-proveedor', mov.proveedor||'');
@@ -2557,6 +2583,9 @@ async function guardarEditMov(){
   try{
     movimientos[idx]={
       ...movimientos[idx],
+      sku:document.getElementById('edit-mov-sku').value.trim(),
+      qty:parseFloat(document.getElementById('edit-mov-qty').value)||0,
+      cantidad:parseFloat(document.getElementById('edit-mov-qty').value)||0,
       guia:document.getElementById('edit-mov-guia').value.trim(),
       proveedor:document.getElementById('edit-mov-proveedor').value,
       motivo:document.getElementById('edit-mov-motivo').value,
