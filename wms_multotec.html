@@ -358,6 +358,7 @@ input[type="file"]{display:none;}
   <div class="menu-item" style="opacity:.45;cursor:default">📈 Informes</div>
   <div class="menu-section" id="admin-section" style="display:none">Administración</div>
   <div class="menu-item" id="admin-btn" onclick="showView('usuarios',this)" style="display:none">👥 Usuarios</div>
+  <div class="menu-item" id="audit-btn" onclick="showView('auditoria',this)" style="display:none">📋 Auditoría</div>
   <div class="menu-item" id="mipass-btn" onclick="openCambiarPass()">🔑 Cambiar contraseña</div>
 </div>
 
@@ -1005,6 +1006,29 @@ input[type="file"]{display:none;}
     </div>
   </div>
 
+  <!-- Vista Auditoría -->
+  <div class="view" id="view-auditoria">
+    <div class="main-content">
+      <div class="top-bar">
+        <div>
+          <div class="page-title">📋 <span>Log de</span> Auditoría</div>
+          <div style="font-size:.8em;color:rgba(255,255,255,.65);margin-top:3px">Registro de actividad del sistema</div>
+        </div>
+        <button class="btn btn-ghost" onclick="renderAuditoria()">🔄 Actualizar</button>
+      </div>
+      <div style="background:white;border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07)">
+        <table style="width:100%;border-collapse:collapse;font-size:.88em">
+          <thead><tr>
+            <th style="background:#1a4d4d;color:white;padding:11px 14px;text-align:left;font-size:.76em;text-transform:uppercase;letter-spacing:.05em">Fecha/Hora</th>
+            <th style="background:#1a4d4d;color:white;padding:11px 14px;text-align:left;font-size:.76em;text-transform:uppercase;letter-spacing:.05em">Usuario</th>
+            <th style="background:#1a4d4d;color:white;padding:11px 14px;text-align:left;font-size:.76em;text-transform:uppercase;letter-spacing:.05em">Acción</th>
+            <th style="background:#1a4d4d;color:white;padding:11px 14px;text-align:left;font-size:.76em;text-transform:uppercase;letter-spacing:.05em">Detalle</th>
+          </tr></thead>
+          <tbody id="audit-tbody"><tr><td colspan="4" style="padding:24px;text-align:center;color:#6a8a80">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div><!-- /views-wrap -->
 
 <!-- Modal nuevo/editar usuario -->
@@ -1362,6 +1386,7 @@ function showView(name,el){
   if(name==='dashboard') setTimeout(updateDashboard,50);
   if(name==='despachos') setTimeout(()=>{ renderDespachos(); },50);
   if(name==='usuarios') setTimeout(()=>{ if(currentUser?.rol==='Admin') renderUsuarios(); },50);
+  if(name==='auditoria') setTimeout(()=>{ if(currentUser?.rol==='Admin') renderAuditoria(); },50);
 }
 
 // ── LOGO / BG (registrar directo, el script está al final del body) ──
@@ -3280,10 +3305,49 @@ let currentUser = null;
 let editingUserId = null;
 let resetUserId = null;
 
+/* ══════════════════════════════════════════════
+   SEGURIDAD — Módulo completo
+══════════════════════════════════════════════ */
+
+// --- Hash SHA-256 ---
 async function hashPass(pass){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pass));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+
+// --- Sanitizar inputs (prevenir XSS) ---
+function sanitize(str){
+  if(typeof str!=='string') return str;
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
+// --- Intentos fallidos (en memoria) ---
+const _loginAttempts={};
+const MAX_INTENTOS=5;
+const BLOQUEO_MS=15*60*1000;
+function getAttempts(user){if(!_loginAttempts[user])_loginAttempts[user]={count:0,blockedUntil:null};return _loginAttempts[user];}
+function registrarIntento(user){const a=getAttempts(user);a.count++;if(a.count>=MAX_INTENTOS)a.blockedUntil=Date.now()+BLOQUEO_MS;}
+function resetIntentos(user){delete _loginAttempts[user];}
+function estaBloqueado(user){const a=getAttempts(user);if(!a.blockedUntil)return false;if(Date.now()>a.blockedUntil){delete _loginAttempts[user];return false;}return true;}
+function tiempoBloqueo(user){const a=getAttempts(user);if(!a.blockedUntil)return 0;return Math.ceil((a.blockedUntil-Date.now())/60000);}
+
+// --- Sesión con expiración por inactividad (30 min) ---
+const SESSION_TIMEOUT_MS=30*60*1000;
+let _sessionTimer=null;
+function resetSessionTimer(){if(!currentUser)return;clearTimeout(_sessionTimer);_sessionTimer=setTimeout(()=>{toast('⏱️ Sesión expirada por inactividad');setTimeout(()=>{if(currentUser)doLogout(true);},1500);},SESSION_TIMEOUT_MS);}
+function startSessionWatcher(){['click','keydown','mousemove','touchstart'].forEach(ev=>document.addEventListener(ev,resetSessionTimer,{passive:true}));resetSessionTimer();}
+function stopSessionWatcher(){clearTimeout(_sessionTimer);}
+
+// --- Log de auditoría ---
+const _auditLog=[];
+async function auditLog(accion,detalle=''){
+  const entry={ts:new Date().toISOString(),usuario:currentUser?.usuario||'—',nombre:currentUser?.nombre||'—',accion:String(accion).substring(0,100),detalle:String(detalle).substring(0,200)};
+  _auditLog.unshift(entry);if(_auditLog.length>200)_auditLog.length=200;
+  try{const prev=await supaGetConfig('wms_audit_log');const arr=prev?JSON.parse(prev):[];arr.unshift(entry);if(arr.length>500)arr.length=500;await supaSetConfig('wms_audit_log',JSON.stringify(arr));}catch(e){}
+}
+
+// --- Validación de rol ---
+function requireRole(rolesPermitidos){if(!currentUser){toast('❌ No autenticado');return false;}if(!rolesPermitidos.includes(currentUser.rol)){toast('🚫 Sin permiso para esta acción');return false;}return true;}
 async function supaGetUsuarios(){
   const r=await fetch(`${SUPA_URL}/rest/v1/usuarios?select=data&order=id`,{headers:SUPA_H});
   return r.ok?(await r.json()).map(x=>x.data):[];
@@ -3303,18 +3367,40 @@ async function doLogin(){
   const errEl=document.getElementById('login-error');
   errEl.style.display='none';
   if(!user||!pass){errEl.textContent='Ingresa usuario y contraseña';errEl.style.display='block';return;}
+
+  // Verificar bloqueo por intentos fallidos
+  if(estaBloqueado(user)){
+    const mins=tiempoBloqueo(user);
+    errEl.textContent=`🔒 Cuenta bloqueada. Intenta en ${mins} minuto${mins!==1?'s':''}.`;
+    errEl.style.display='block';return;
+  }
+
   const btn=document.querySelector('#login-screen button');
   if(btn){btn.textContent='Verificando…';btn.disabled=true;}
   try{
     const usuarios=await supaGetUsuarios();
     const found=usuarios.find(u=>u.usuario.toLowerCase()===user);
-    if(!found){errEl.textContent='Usuario no encontrado';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
-    if(found.activo===false){errEl.textContent='Usuario inactivo. Contacta al administrador';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
+    if(!found){
+      registrarIntento(user);
+      const a=getAttempts(user);
+      const restantes=MAX_INTENTOS-a.count;
+      errEl.textContent=restantes>0?`Usuario o contraseña incorrectos (${restantes} intento${restantes!==1?'s':''} restante${restantes!==1?'s':''})`:' Cuenta bloqueada por 15 minutos.';
+      errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;
+    }
+    if(found.activo===false){errEl.textContent='🚫 Usuario inactivo. Contacta al administrador';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
     const hash=await hashPass(pass);
-    if(hash!==found.passHash){errEl.textContent='Contraseña incorrecta';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
+    if(hash!==found.passHash){
+      registrarIntento(user);
+      const a=getAttempts(user);
+      const restantes=MAX_INTENTOS-a.count;
+      errEl.textContent=restantes>0?`Usuario o contraseña incorrectos (${restantes} intento${restantes!==1?'s':''} restante${restantes!==1?'s':''})`:' Cuenta bloqueada por 15 minutos.';
+      errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;
+    }
+    resetIntentos(user);
     currentUser=found;
     found.ultimoAcceso=new Date().toLocaleString('es-CL');
     await supaUpsertUsuario(found);
+    await auditLog('LOGIN','Inicio de sesión exitoso');
     document.getElementById('login-screen').style.display='none';
     document.getElementById('sidebar-user').style.display='block';
     document.getElementById('sidebar-user-name').textContent=found.nombre;
@@ -3322,15 +3408,19 @@ async function doLogin(){
     if(found.rol==='Admin'){
       document.getElementById('admin-section').style.display='';
       document.getElementById('admin-btn').style.display='';
+      document.getElementById('audit-btn').style.display='';
     }
+    startSessionWatcher();
     await loadAppData();
   }catch(e){
     errEl.textContent='Error: '+e.message;errEl.style.display='block';
     if(btn){btn.textContent='Ingresar →';btn.disabled=false;}
   }
 }
-function doLogout(){
-  if(!confirm('¿Cerrar sesión?')) return;
+function doLogout(auto=false){
+  if(!auto && !confirm('¿Cerrar sesión?')) return;
+  auditLog('LOGOUT', auto?'Sesión expirada por inactividad':'Cierre de sesión manual').catch(()=>{});
+  stopSessionWatcher();
   currentUser=null;
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-user').value='';
@@ -3339,6 +3429,7 @@ function doLogout(){
   document.getElementById('sidebar-user').style.display='none';
   document.getElementById('admin-section').style.display='none';
   document.getElementById('admin-btn').style.display='none';
+  document.getElementById('audit-btn').style.display='none';
   items=[];movimientos=[];traspasos=[];despachos=[];
 }
 async function renderUsuarios(){
@@ -3453,6 +3544,29 @@ async function guardarMiPass(){
     hideLoading();toast('✅ Contraseña actualizada');
     document.getElementById('modal-mi-pass').classList.remove('open');
   }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
+}
+
+async function renderAuditoria(){
+  if(!requireRole(['Admin'])) return;
+  const tbody=document.getElementById('audit-tbody');
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="4" style="padding:24px;text-align:center;color:#6a8a80">Cargando…</td></tr>';
+  try{
+    const raw=await supaGetConfig('wms_audit_log');
+    const log=raw?JSON.parse(raw):[];
+    if(!log.length){tbody.innerHTML='<tr><td colspan="4" style="padding:24px;text-align:center;color:#6a8a80">Sin registros aún</td></tr>';return;}
+    const colors={'LOGIN':'#dcfce7','LOGOUT':'#fef9c3','ERROR':'#fee2e2'};
+    tbody.innerHTML=log.map(e=>{
+      const d=new Date(e.ts).toLocaleString('es-CL');
+      const bg=colors[e.accion]||'#f5f8f7';
+      return `<tr style="border-bottom:1px solid #eef4f2;background:${bg}">
+        <td style="padding:9px 14px;font-size:.84em;color:#4a6a60;white-space:nowrap">${d}</td>
+        <td style="padding:9px 14px;font-weight:600;color:#1a2e2a">${e.nombre||'—'} <span style="font-size:.78em;color:#6a8a80">(${e.usuario||'—'})</span></td>
+        <td style="padding:9px 14px"><span style="background:#1a4d4d;color:white;padding:2px 8px;border-radius:12px;font-size:.76em;font-weight:700">${e.accion}</span></td>
+        <td style="padding:9px 14px;font-size:.86em;color:#4a6a60">${e.detalle||'—'}</td>
+      </tr>`;
+    }).join('');
+  }catch(err){tbody.innerHTML=`<tr><td colspan="4" style="padding:24px;text-align:center;color:#c02020">Error al cargar: ${err.message}</td></tr>`;}
 }
 
 initApp();
