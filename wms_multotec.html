@@ -1324,9 +1324,18 @@ async function supaGetTras(){
 async function supaUpsertInv(arr){
   if(!arr.length) return;
   const rows=arr.map(i=>({id:i.sku,data:i,updated_at:new Date().toISOString()}));
+  // Intentar batch primero; si falla hacer uno por uno
   const r=await fetch(`${SUPA_URL}/rest/v1/inventario`,{
     method:'POST',headers:{...SUPA_H,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
-  if(!r.ok) throw new Error(await r.text());
+  if(!r.ok){
+    const errText=await r.text();
+    // Fallback: upsert uno por uno
+    for(const row of rows){
+      const r2=await fetch(`${SUPA_URL}/rest/v1/inventario`,{
+        method:'POST',headers:{...SUPA_H,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify([row])});
+      if(!r2.ok) throw new Error('Error al guardar '+row.id+': '+(await r2.text()));
+    }
+  }
 }
 async function supaAddMov(mov){
   const id=mov.id||`mov_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
@@ -1875,19 +1884,24 @@ async function procesarTraspaso(){
   if(!lineas.length){hideLoading();toast('⚠️ No hay lineas validas');return;}
   lineas.forEach(l=>{const idx=inv.findIndex(i=>i.sku===l.sku);if(idx===-1)return;inv[idx][origen]=(inv[idx][origen]||0)-l.qty;inv[idx][destino]=(inv[idx][destino]||0)+l.qty;});
   showLoading('Guardando traspaso…');
-  await supaUpsertInv(lineas.map(l=>inv.find(i=>i.sku===l.sku)).filter(Boolean));
-  const now=new Date();const numVaucher=`TRP-${String(correlativo).padStart(5,'0')}`;
-  const registro={id:`tras_${Date.now()}`,correlativo,numVaucher,
-    fecha:now.toLocaleDateString('es-CL')+' '+now.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}),
-    fechaObj:now.toISOString(),origen:origen.toUpperCase(),destino:destino.toUpperCase(),
-    obs:document.getElementById('t-obs').value.trim(),lineas,estado:'activo',obsAnulacion:''};
-  await supaAddTras(registro);correlativo++;await supaSetConfig('wms_traspaso_correlativo',correlativo);
-  traspasos.unshift(registro);ultimoVaucher=registro;
-  // sync items
-  lineas.forEach(l=>{const gi=items.findIndex(i=>i.sku===l.sku);if(gi>=0){items[gi][origen]=(items[gi][origen]||0)-l.qty;items[gi][destino]=(items[gi][destino]||0)+l.qty;}});
-  _invCache=null;hideLoading();
-  toast(`✅ Traspaso ${numVaucher}: ${lineas.length} línea(s) de ${origen.toUpperCase()} → ${destino.toUpperCase()}`);
-  resetTrasForm();renderVauchers();updateTrasStats();
+  try{
+    await supaUpsertInv(lineas.map(l=>inv.find(i=>i.sku===l.sku)).filter(Boolean));
+    const now=new Date();const numVaucher=`TRP-${String(correlativo).padStart(5,'0')}`;
+    const registro={id:`tras_${Date.now()}`,correlativo,numVaucher,
+      fecha:now.toLocaleDateString('es-CL')+' '+now.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}),
+      fechaObj:now.toISOString(),origen:origen.toUpperCase(),destino:destino.toUpperCase(),
+      obs:document.getElementById('t-obs').value.trim(),lineas,estado:'activo',obsAnulacion:''};
+    await supaAddTras(registro);correlativo++;await supaSetConfig('wms_traspaso_correlativo',correlativo);
+    traspasos.unshift(registro);ultimoVaucher=registro;
+    lineas.forEach(l=>{const gi=items.findIndex(i=>i.sku===l.sku);if(gi>=0){items[gi][origen]=(items[gi][origen]||0)-l.qty;items[gi][destino]=(items[gi][destino]||0)+l.qty;}});
+    _invCache=null;hideLoading();
+    toast(`✅ Traspaso ${numVaucher}: ${lineas.length} línea(s) de ${origen.toUpperCase()} → ${destino.toUpperCase()}`);
+    resetTrasForm();renderVauchers();updateTrasStats();
+  }catch(e){
+    hideLoading();
+    toast('❌ Error al guardar traspaso: '+e.message);
+    console.error('procesarTraspaso error:',e);
+  }
 }
 function resetTrasForm(){
   document.getElementById('f-origen').value='';document.getElementById('f-destino').value='';
