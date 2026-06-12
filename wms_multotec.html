@@ -1840,20 +1840,39 @@ async function procesarTraspaso(){
   if(!destino){toast('⚠️ Selecciona bodega destino');return;}
   if(origen===destino){toast('⚠️ Origen y destino no pueden ser iguales');return;}
   const rows=document.querySelectorAll('#lineas-tbody tr');if(!rows.length){toast('⚠️ Agrega al menos una línea');return;}
+
+  // Validar lineas ANTES de llamar a Supabase - leer inputs directo del DOM
+  const lineasPrev=[];const erroresPrev=[];
+  rows.forEach((tr,idx)=>{
+    const skuEl=tr.querySelector('input[id^="sku-"]');
+    const descEl=tr.querySelector('input[id^="desc-"]');
+    const qtyEl=tr.querySelector('input[id^="qty-"]');
+    if(!skuEl||!qtyEl)return;
+    const sku=skuEl.value.trim();
+    const qty=parseFloat(qtyEl.value)||0;
+    const desc=descEl?descEl.value:'';
+    if(!sku&&qty<=0)return;
+    if(!sku){erroresPrev.push(`Linea ${idx+1}: falta el SKU`);return;}
+    if(qty<=0){erroresPrev.push(`Linea ${idx+1}: cantidad invalida`);return;}
+    lineasPrev.push({sku,qty,desc,idx:idx+1});
+  });
+  if(erroresPrev.length){toast('⚠️ '+erroresPrev[0]);return;}
+  if(!lineasPrev.length){toast('⚠️ No hay lineas validas');return;}
+
   showLoading('Cargando inventario…');
-  const inv=await supaGet('inventario');const lineas=[];let errores=0;
-  rows.forEach(tr=>{
-    const id=tr.id.replace('linea-','');
-    const sku=document.getElementById(`sku-${id}`).value.trim();
-    const qty=parseFloat(document.getElementById(`qty-${id}`).value)||0;
-    const desc=document.getElementById(`desc-${id}`).value;
-    if(!sku||qty<=0){errores++;return;}
-    const item=inv.find(i=>i.sku===sku);if(!item){toast(`❌ ${sku} no encontrado`);errores++;return;}
-    const stk=item[origen]||0;if(qty>stk){toast(`⚠️ ${sku}: solo hay ${stk} en ${origen.toUpperCase()}`);errores++;return;}
+  let inv;
+  try{inv=await supaGet('inventario');}catch(e){hideLoading();toast('❌ Error al cargar inventario: '+e.message);return;}
+
+  const lineas=[];const errores=[];
+  lineasPrev.forEach(({sku,qty,desc,idx})=>{
+    const item=inv.find(i=>i.sku===sku);
+    if(!item){errores.push(`Linea ${idx}: SKU "${sku}" no encontrado`);return;}
+    const stk=item[origen]||0;
+    if(qty>stk){errores.push(`Linea ${idx}: ${sku} solo tiene ${stk} en ${origen.toUpperCase()}`);return;}
     lineas.push({sku,desc,qty,stockOrigen:stk,um:item.um||'UN'});
   });
-  if(errores>0){hideLoading();toast('⚠️ Corrige los errores');return;}
-  if(!lineas.length){hideLoading();toast('⚠️ No hay líneas válidas');return;}
+  if(errores.length){hideLoading();toast('⚠️ '+errores[0]);return;}
+  if(!lineas.length){hideLoading();toast('⚠️ No hay lineas validas');return;}
   lineas.forEach(l=>{const idx=inv.findIndex(i=>i.sku===l.sku);if(idx===-1)return;inv[idx][origen]=(inv[idx][origen]||0)-l.qty;inv[idx][destino]=(inv[idx][destino]||0)+l.qty;});
   showLoading('Guardando traspaso…');
   await supaUpsertInv(lineas.map(l=>inv.find(i=>i.sku===l.sku)).filter(Boolean));
