@@ -3920,5 +3920,93 @@ setInterval(()=>{if(currentUser&&Date.now()-(+localStorage.getItem('wms_last_bac
 })();
 
 </script>
+<script>
+(function(){
+const $=id=>document.getElementById(id),BU=['bu1','bu2','bu3','bu4','bu5'];
+const tot=i=>BU.reduce((a,k)=>a+(+i[k]||0),0),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const def=()=>({z:[{id:'A',name:'RACK A',kind:'rack',cols:20,lvls:4},{id:'B',name:'RACK B',kind:'rack',cols:20,lvls:4},{id:'PIEZA',name:'PIEZA',kind:'floor'},{id:'FONDO1',name:'FONDO 1',kind:'floor'},{id:'FMAT',name:'FONDO MATRICES',kind:'floor'}],loc:{}});
+let LY=def(),loaded=false,mode='3d',rx=-22,ry=-28,zm=.7,hl=new Set(),tm=null,cur=null;
+const key=(z,c,l)=>`${z}|${c}|${l}`,cells=z=>z.kind==='floor'?[[1,1]]:Array.from({length:z.cols*z.lvls},(_,n)=>[Math.floor(n/z.lvls)+1,n%z.lvls+1]);
+const get=(z,c,l)=>LY.loc[key(z,c,l)]||[],full=(z,c,l)=>get(z,c,l).length>0;
+async function load(){if(loaded)return;try{const v=await supaGetConfig('layout_v1');if(v&&v.z)LY=v;loaded=true;}catch(e){}}
+function save(){clearTimeout(tm);tm=setTimeout(async()=>{try{await supaSetConfig('layout_v1',LY);}catch(e){toast('⚠️ No se pudo guardar el layout');}},500);}
+const assigned=s=>Object.values(LY.loc).flat().reduce((a,x)=>a+(x.sku===s?+x.qty:0),0);
+// ── Vista y menú ──
+const W=document.querySelector('.views-wrap'),an=[...document.querySelectorAll('.sidebar .menu-item')].find(e=>/Alertas/.test(e.textContent));
+const m=document.createElement('div');m.className='menu-item';m.setAttribute('onclick',"showView('layout',this)");m.innerHTML='🧱 Layout Racks 3D';an.parentNode.insertBefore(m,an);
+const v=document.createElement('div');v.className='view';v.id='view-layout';
+v.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">🧱 Layout de <span>Racks</span></div></div>
+<div class="x-grid" id="ly-st"></div>
+<div class="x-bar"><button class="x-btn" id="ly-b3" onclick="lyMode('3d')">🧊 Vista 3D</button><button class="x-btn alt" id="ly-b2" onclick="lyMode('2d')">🟩 Plano 2D</button><input id="ly-q" placeholder="🔍 Buscar código en el layout…" oninput="lyFind()" style="min-width:210px"><button class="x-btn alt" onclick="lyAddZone('rack')">➕ Nuevo rack</button><button class="x-btn alt" onclick="lyAddZone('floor')">➕ Zona de piso</button></div>
+<div id="ly-3d"><div class="x-bar"><button class="x-btn alt" onclick="lyZoom(.1)">＋</button><button class="x-btn alt" onclick="lyZoom(-.1)">－</button><button class="x-btn alt" onclick="lyRot(-22,-28)">⟲ Reiniciar</button><button class="x-btn alt" onclick="lyRot(-8,0)">Frente</button><button class="x-btn alt" onclick="lyRot(-80,0)">Planta</button><small style="color:var(--t-text);opacity:.7">Arrastra para girar · toca una ubicación para editarla</small></div><div id="ly-sc"><div id="ly-w"></div></div></div>
+<div id="ly-2d" style="display:none"></div>
+<div class="x-card" id="ly-ad"></div></div>`;W.appendChild(v);
+const css=document.createElement('style');css.textContent=`#ly-sc{height:62vh;min-height:380px;perspective:1600px;overflow:hidden;border-radius:16px;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.12),rgba(0,0,0,.35));border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;user-select:none}
+#ly-w{position:relative;width:0;height:0;transform-style:preserve-3d}.ly-o{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.ly-f{position:absolute;left:50%;top:50%;border:1px solid rgba(0,0,0,.35);backface-visibility:visible;display:flex;align-items:center;justify-content:center;font:700 11px Segoe UI;color:#fff;text-align:center}
+.ly-c{cursor:pointer}.ly-c:hover .ly-f{filter:brightness(1.35)}.ly2{display:inline-block;width:27px;height:27px;border-radius:5px;margin:1px;cursor:pointer;font-size:9px;line-height:27px;text-align:center;color:#fff;transition:.15s}.ly2:hover{transform:scale(1.2)}
+.ly-pb{height:8px;border-radius:5px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:6px}.ly-pb i{display:block;height:100%;background:#22c55e}
+#ly-mod{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100002;display:none;align-items:center;justify-content:center}#ly-mod>div{background:var(--t-side);color:var(--t-text);border:1px solid var(--t-accent);border-radius:18px;padding:18px;width:430px;max-width:94vw;max-height:88vh;overflow:auto}`;document.head.appendChild(css);
+const md=document.createElement('div');md.id='ly-mod';md.innerHTML='<div id="ly-mb"></div>';document.body.appendChild(md);
+md.onclick=e=>{if(e.target===md)md.style.display='none';};
+// ── 3D ──
+const P=34,S=30;
+function cube(w,h,d,col,top){const f=(fw,fh,tr,b,t)=>`<div class="ly-f" style="width:${fw}px;height:${fh}px;margin:${-fh/2}px 0 0 ${-fw/2}px;background:${col};filter:brightness(${b});transform:${tr}">${t||''}</div>`;
+ return f(w,h,`translateZ(${d/2}px)`,1)+f(w,h,`rotateY(180deg) translateZ(${d/2}px)`,.65)+f(d,h,`rotateY(90deg) translateZ(${w/2}px)`,.8)+f(d,h,`rotateY(-90deg) translateZ(${w/2}px)`,.8)+f(w,d,`rotateX(90deg) translateZ(${h/2}px)`,1.15,top)+f(w,d,`rotateX(-90deg) translateZ(${h/2}px)`,.6);}
+const colr=(z,c,l)=>hl.size&&get(z,c,l).some(x=>hl.has(String(x.sku)))?'rgba(59,130,246,.95)':full(z,c,l)?'rgba(34,197,94,.88)':'rgba(239,68,68,.82)';
+function r3(){let h='',zc=0;const dp=z=>z.kind==='floor'?110:P,tt=LY.z.reduce((a,z)=>a+dp(z)+46,0);zc=-tt/2;
+ LY.z.forEach(z=>{const d=dp(z),zz=zc+d/2;zc+=d+46;
+  if(z.kind==='floor'){const c=colr(z.id,1,1),tl=get(z.id,1,1).map(x=>x.sku).slice(0,3).join(' ');h+=`<div class="ly-o ly-c" onclick="lyClick('${z.id}',1,1)" style="transform:translate3d(0,-8px,${zz}px)">${cube(220,16,d,c,esc(z.name)+(tl?'<br>'+esc(tl):''))}</div>`;}
+  else{const bw=z.cols*P;h+=`<div class="ly-o" style="transform:translate3d(0,-3px,${zz}px)">${cube(bw+10,6,P+6,'#2a3a3a',esc(z.name))}</div>`;
+   cells(z).forEach(([c,l])=>{const x=(c-1-(z.cols-1)/2)*P,y=-(l-.5)*P-6;h+=`<div class="ly-o ly-c" title="${esc(z.name)} C${c} N${l}: ${esc(get(z.id,c,l).map(a=>a.sku+' ×'+a.qty).join(', ')||'vacía')}" onclick="lyClick('${z.id}',${c},${l})" style="transform:translate3d(${x}px,${y}px,${zz}px)">${cube(S,S,S,colr(z.id,c,l))}</div>`;});}});
+ $('ly-w').innerHTML=h;ap();}
+function ap(){$('ly-w').style.transform=`rotateX(${rx}deg) rotateY(${ry}deg) scale(${zm})`;}
+window.lyZoom=d=>{zm=Math.min(1.6,Math.max(.25,zm+d));ap();};window.lyRot=(a,b)=>{rx=a;ry=b;ap();};
+let dr=null,moved=false;const sc=$('ly-sc');
+sc.addEventListener('pointerdown',e=>{dr={x:e.clientX,y:e.clientY};moved=false;});
+window.addEventListener('pointermove',e=>{if(!dr)return;const dx=e.clientX-dr.x,dy=e.clientY-dr.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;if(moved){ry+=dx*.4;rx=Math.max(-90,Math.min(0,rx-dy*.4));dr={x:e.clientX,y:e.clientY};ap();}});
+window.addEventListener('pointerup',()=>{dr=null;});
+sc.addEventListener('wheel',e=>{e.preventDefault();lyZoom(e.deltaY>0?-.05:.05);},{passive:false});
+window.lyClick=(z,c,l)=>{if(moved)return;lyOpen(z,c,l);};
+// ── 2D ──
+function r2(){$('ly-2d').innerHTML=LY.z.map(z=>{const s=zs(z);let g='';
+ if(z.kind==='floor')g=`<div class="ly2" style="width:150px;background:${full(z.id,1,1)?'#22c55e':'#ef4444'}" onclick="lyOpen('${z.id}',1,1)">${get(z.id,1,1).length} código(s)</div>`;
+ else for(let l=z.lvls;l>=1;l--){g+=`<div style="white-space:nowrap"><span style="display:inline-block;width:18px;font-size:10px">${l}</span>`;for(let c=1;c<=z.cols;c++)g+=`<div class="ly2" style="background:${colr(z.id,c,l)}" title="C${c} N${l}" onclick="lyOpen('${z.id}',${c},${l})">${c}</div>`;g+='</div>';}
+ return`<div class="x-card" style="margin-bottom:12px"><h3>${esc(z.name)} · ${s.f}/${s.t} llenas (${s.p}%)</h3><div class="ly-pb"><i style="width:${s.p}%"></i></div><div style="overflow-x:auto;margin-top:10px">${g}</div></div>`;}).join('');}
+// ── Estadísticas y admin ──
+function zs(z){const cs=cells(z),f=cs.filter(([c,l])=>full(z.id,c,l)).length;return{t:cs.length,f,e:cs.length-f,p:cs.length?Math.round(f*100/cs.length):0};}
+function stats(){const a=LY.z.map(zs),T=a.reduce((x,y)=>x+y.t,0),F=a.reduce((x,y)=>x+y.f,0),p=T?Math.round(F*100/T):0;
+ $('ly-st').innerHTML=`<div class="x-card"><h3>Ocupación total</h3><p>${p}%</p><div class="ly-pb"><i style="width:${p}%"></i></div></div><div class="x-card"><h3>🟩 Llenas</h3><p>${F}</p></div><div class="x-card"><h3>🟥 Vacías</h3><p>${T-F}</p></div><div class="x-card"><h3>Total ubicaciones</h3><p>${T}</p></div>`+LY.z.map((z,i)=>`<div class="x-card"><h3>${esc(z.name)}</h3><p>${a[i].p}%</p><small>${a[i].f} llenas · ${a[i].e} vacías</small></div>`).join('');
+ $('ly-ad').innerHTML='<h3>⚙️ Administrar líneas de rack</h3>'+LY.z.map(z=>`<div class="x-bar" style="margin-top:8px"><b style="min-width:130px">${esc(z.name)}${z.kind==='rack'?` <small>(${z.cols}×${z.lvls})</small>`:' <small>(piso)</small>'}</b>${z.kind==='rack'?`<button class="x-btn alt" onclick="lyDim('${z.id}','cols',1)">＋Columna</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',1)">＋Nivel ↑</button><button class="x-btn alt" onclick="lyDim('${z.id}','cols',-1)">－Col</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',-1)">－Nivel</button>`:''}<button class="x-btn alt" onclick="lyRen('${z.id}')">✏️</button><button class="x-btn alt" onclick="lyDel('${z.id}')">🗑</button></div>`).join('');}
+function rr(){stats();if(mode==='3d')r3();else r2();}
+window.lyMode=md2=>{mode=md2;$('ly-3d').style.display=md2==='3d'?'':'none';$('ly-2d').style.display=md2==='2d'?'':'none';$('ly-b3').className='x-btn'+(md2==='3d'?'':' alt');$('ly-b2').className='x-btn'+(md2==='2d'?'':' alt');rr();};
+window.lyFind=()=>{const q=$('ly-q').value.trim().toLowerCase();hl=new Set();if(q)Object.values(LY.loc).flat().forEach(x=>{if(String(x.sku).toLowerCase().includes(q))hl.add(String(x.sku));});rr();};
+window.lyAddZone=k=>{const n=prompt('Nombre de la '+(k==='rack'?'línea de rack':'zona de piso')+':');if(!n)return;const z={id:'Z'+Date.now(),name:n.toUpperCase(),kind:k};
+ if(k==='rack'){const c=+prompt('¿Cuántas columnas?','10'),l=+prompt('¿Cuántos niveles (pisos)?','4');if(!(c>0&&l>0))return;z.cols=c;z.lvls=l;}LY.z.push(z);save();rr();};
+window.lyDim=(id,k,d)=>{const z=LY.z.find(x=>x.id===id),n=z[k]+d;if(n<1)return;
+ if(d<0){const used=cells(z).some(([c,l])=>(k==='cols'?c===z.cols:l===z.lvls)&&full(id,c,l));if(used)return toast('⚠️ Vacía primero esa ubicación');}
+ z[k]=n;save();rr();};
+window.lyRen=id=>{const z=LY.z.find(x=>x.id===id),n=prompt('Nuevo nombre:',z.name);if(n){z.name=n.toUpperCase();save();rr();}};
+window.lyDel=id=>{if(!confirm('¿Eliminar esta zona y sus códigos asignados?'))return;LY.z=LY.z.filter(x=>x.id!==id);Object.keys(LY.loc).forEach(k=>{if(k.startsWith(id+'|'))delete LY.loc[k];});save();rr();};
+// ── Editor de ubicación ──
+window.lyOpen=(z,c,l)=>{cur=[z,c,l];edit();$('ly-mod').style.display='flex';};
+function edit(){const[z,c,l]=cur,zn=LY.z.find(x=>x.id===z),ls=get(z,c,l),av=items.filter(i=>tot(i)>0).slice(0,3000);
+ $('ly-mb').innerHTML=`<h3>${esc(zn.name)}${zn.kind==='rack'?` · Columna ${c} · Nivel ${l}`:''}</h3><p style="font-size:.8em;opacity:.7;margin:4px 0 10px">${ls.length?'🟩 Llena':'🟥 Vacía'} · puedes agregar varios códigos</p>
+ ${ls.map((x,n)=>{const i=items.find(a=>String(a.sku)===String(x.sku));return`<div class="x-bar" style="margin-bottom:6px"><b style="flex:1">${esc(x.sku)}<br><small>${esc(i?i.desc1:'')}</small></b><input type="number" min="1" value="${x.qty}" style="width:80px" onchange="lyQty(${n},this.value)"><button class="x-btn alt" onclick="lyRm(${n})">✕</button></div>`}).join('')}
+ <div class="x-bar" style="margin-top:10px"><input id="ly-s" list="ly-dl" placeholder="Código SKU" style="flex:1" oninput="lyHint()"><datalist id="ly-dl">${av.map(i=>`<option value="${esc(i.sku)}">${esc(i.desc1)}</option>`).join('')}</datalist><input id="ly-n" type="number" min="1" placeholder="Cant." style="width:80px"><button class="x-btn" onclick="lyAdd()">Agregar</button></div>
+ <small id="ly-h" style="display:block;margin-top:6px;opacity:.8"></small>
+ <div class="x-bar" style="margin-top:12px"><button class="x-btn alt" onclick="lyClear()">Vaciar ubicación</button><button class="x-btn" onclick="document.getElementById('ly-mod').style.display='none'">Cerrar</button></div>`;}
+window.lyHint=()=>{const i=items.find(a=>String(a.sku)===$('ly-s').value.trim());$('ly-h').textContent=i?`${i.desc1} · Stock ${tot(i)} · Sin ubicar ${tot(i)-assigned(i.sku)}`:'';};
+window.lyAdd=()=>{const s=$('ly-s').value.trim(),q=+$('ly-n').value,i=items.find(a=>String(a.sku)===s);if(!i)return toast('⚠️ Ese código no existe en el inventario');if(!(q>0))return toast('⚠️ Ingresa la cantidad');
+ if(tot(i)===0&&!confirm('Este SKU no tiene stock. ¿Agregar igual?'))return;if(q>tot(i)-assigned(i.sku)&&!confirm('La cantidad supera el stock sin ubicar. ¿Continuar?'))return;
+ const k=key(...cur),a=LY.loc[k]=LY.loc[k]||[],e=a.find(x=>String(x.sku)===s);if(e)e.qty+=q;else a.push({sku:i.sku,qty:q});save();edit();rr();};
+window.lyQty=(n,v)=>{if(+v>0)LY.loc[key(...cur)][n].qty=+v;save();rr();};
+window.lyRm=n=>{const k=key(...cur);LY.loc[k].splice(n,1);if(!LY.loc[k].length)delete LY.loc[k];save();edit();rr();};
+window.lyClear=()=>{delete LY.loc[key(...cur)];save();edit();rr();};
+// ── Hook ──
+const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='layout')setTimeout(async()=>{await load();rr();},120);};
+})();
+
+</script>
 </body>
 </html>
