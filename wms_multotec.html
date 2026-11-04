@@ -275,6 +275,7 @@ input[type="file"]{display:none;}
 @media print{.sidebar,.no-print{display:none!important;} body{overflow:visible;height:auto;} .views-wrap{overflow:visible;height:auto;}}
 
 /* ══ TEMAS Y EFECTOS ══ */
+#theme-btn,#change-bg-btn{display:none!important;}
 #login-screen>div{animation:cardIn .7s cubic-bezier(.2,.7,.2,1) both;}
 #login-screen input:focus{border-color:var(--t-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--t-accent) 30%,transparent);}
 #login-screen button[onclick="doLogin()"]:hover{transform:translateY(-2px);box-shadow:0 10px 26px color-mix(in srgb,var(--t-accent) 45%,transparent);}
@@ -301,7 +302,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--t-accent) 12%,transparent)!imp
 *{scrollbar-width:thin;scrollbar-color:var(--t-accent) transparent;}
 #theme-btn{position:fixed;bottom:22px;right:178px;z-index:100000;background:color-mix(in srgb,var(--t-deep) 92%,transparent);color:var(--t-soft);border:1.5px solid var(--t-accent);border-radius:50px;padding:9px 16px;font-size:.78em;font-weight:600;cursor:pointer;}
 #theme-btn:hover{background:var(--t-accent);color:#fff;transform:translateY(-2px);}
-#theme-panel{position:fixed;bottom:70px;right:22px;width:290px;max-width:calc(100vw - 30px);z-index:100001;background:color-mix(in srgb,var(--t-side) 96%,transparent);backdrop-filter:blur(16px);color:#fff;border:1px solid color-mix(in srgb,var(--t-accent) 60%,transparent);border-radius:18px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);opacity:0;transform:translateY(14px) scale(.97);pointer-events:none;transition:all .3s cubic-bezier(.2,.7,.2,1);}
+#theme-panel{position:fixed;bottom:20px;left:245px;width:290px;max-width:calc(100vw - 30px);z-index:100001;background:color-mix(in srgb,var(--t-side) 96%,transparent);backdrop-filter:blur(16px);color:#fff;border:1px solid color-mix(in srgb,var(--t-accent) 60%,transparent);border-radius:18px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);opacity:0;transform:translateY(14px) scale(.97);pointer-events:none;transition:all .3s cubic-bezier(.2,.7,.2,1);}
 #theme-panel.open{opacity:1;transform:none;pointer-events:auto;}
 #theme-panel h4{font-size:.85em;margin-bottom:10px;letter-spacing:.04em;}
 #theme-panel .lbl{font-size:.68em;text-transform:uppercase;letter-spacing:.08em;opacity:.6;margin:12px 0 6px;}
@@ -404,6 +405,9 @@ tbody tr:hover{background:color-mix(in srgb,var(--t-accent) 12%,transparent)!imp
   <div class="menu-item" id="admin-btn" onclick="showView('usuarios',this)" style="display:none">👥 Usuarios</div>
   <div class="menu-item" id="audit-btn" onclick="showView('auditoria',this)" style="display:none">📋 Auditoría</div>
   <div class="menu-item" id="mipass-btn" onclick="openCambiarPass()">🔑 Cambiar contraseña</div>
+  <div class="menu-section">Apariencia</div>
+  <div class="menu-item" id="menu-theme" onclick="document.getElementById('theme-panel').classList.toggle('open')">🎨 Tema</div>
+  <div class="menu-item" id="menu-bg" onclick="document.getElementById('bg-input').click()">🖼️ Cambiar fondo</div>
 </div>
 
 <!-- ══ VISTAS ══ -->
@@ -3829,7 +3833,7 @@ initApp();
   let saved=null;try{saved=JSON.parse(localStorage.getItem(K));}catch(e){}
   if(saved)apply(saved);else{T=null;document.getElementById('th-accent').value=P[0].a;document.getElementById('th-menu').value=P[0].m;document.getElementById('th-bg').value=P[0].b;document.getElementById('th-text').value=P[0].t;}
   document.addEventListener('click',e=>{const p=document.getElementById('theme-panel');
-    if(p.classList.contains('open')&&!p.contains(e.target)&&e.target.id!=='theme-btn')p.classList.remove('open');});
+    if(p.classList.contains('open')&&!p.contains(e.target)&&e.target.id!=='menu-theme'&&e.target.id!=='theme-btn')p.classList.remove('open');});
 })();
 </script>
 <script>
