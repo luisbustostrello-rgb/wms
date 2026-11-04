@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>WMS MULTOTEC</title>
+<title>Sistema LB</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -282,9 +282,9 @@ input[type="file"]{display:none;}
     <div style="text-align:center;margin-bottom:32px">
       <div style="display:inline-block;background:white;padding:12px 24px;border-radius:14px;margin-bottom:16px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
         <img id="login-logo" src="" style="height:48px;object-fit:contain"
-          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2248%22%3E%3Crect width=%22160%22 height=%2248%22 fill=%22%231a4d4d%22/%3E%3Ctext x=%2280%22 y=%2230%22 font-size=%2216%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22Segoe UI%22%3EMULTOTEC%3C/text%3E%3C/svg%3E'">
+          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2248%22%3E%3Crect width=%22160%22 height=%2248%22 fill=%22%231a4d4d%22/%3E%3Ctext x=%2280%22 y=%2230%22 font-size=%2216%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22Segoe UI%22%3ESistema%20LB%3C/text%3E%3C/svg%3E'">
       </div>
-      <div style="color:white;font-size:1.4em;font-weight:800;letter-spacing:.04em">WMS MULTOTEC</div>
+      <div style="color:white;font-size:1.4em;font-weight:800;letter-spacing:.04em">Sistema LB</div>
       <div style="color:rgba(255,255,255,.5);font-size:.85em;margin-top:4px">Sistema de Gestión de Bodega</div>
     </div>
     <div style="background:rgba(255,255,255,.07);backdrop-filter:blur(20px);border:1.5px solid rgba(255,255,255,.12);border-radius:20px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
@@ -308,7 +308,7 @@ input[type="file"]{display:none;}
       <button onclick="doLogin()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1a7a50,#2e9e7a);color:white;border:none;border-radius:12px;font-size:.95em;font-weight:700;cursor:pointer;font-family:inherit">Ingresar →</button>
       <div style="text-align:center;margin-top:16px;color:rgba(255,255,255,.35);font-size:.78em">¿Olvidaste tu contraseña? Contacta al administrador</div>
     </div>
-    <div style="text-align:center;margin-top:20px;color:rgba(255,255,255,.2);font-size:.72em">WMS v2.0 · MULTOTEC · 2026</div>
+    <div style="text-align:center;margin-top:20px;color:rgba(255,255,255,.2);font-size:.72em">WMS v2.0 · Sistema LB · 2026</div>
   </div>
 </div>
 
@@ -326,7 +326,7 @@ input[type="file"]{display:none;}
   <div class="logo-container">
     <div class="logo-wrapper" id="logo-wrapper" title="Clic para cambiar logo">
       <img id="logo-img" class="logo-img" src=""
-           onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2260%22%3E%3Crect width=%22160%22 height=%2260%22 fill=%22%231a4d4d%22/%3E%3Ctext x=%2280%22 y=%2238%22 font-size=%2218%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22Segoe UI%22%3EMULTOTEC%3C/text%3E%3C/svg%3E'">
+           onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2260%22%3E%3Crect width=%22160%22 height=%2260%22 fill=%22%231a4d4d%22/%3E%3Ctext x=%2280%22 y=%2238%22 font-size=%2218%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22Segoe UI%22%3ESistema%20LB%3C/text%3E%3C/svg%3E'">
       <div class="logo-edit-badge">✏️</div>
     </div>
     <div class="logo-hint">✦ clic para cambiar logo</div>
@@ -371,7 +371,7 @@ input[type="file"]{display:none;}
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
         <div>
           <h1 style="font-size:1.7em;font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,.5)">Dashboard General</h1>
-          <p style="color:rgba(255,255,255,.65);margin-top:4px;font-size:.88em">Sistema de gestión WMS MULTOTEC — tiempo real</p>
+          <p style="color:rgba(255,255,255,.65);margin-top:4px;font-size:.88em">Sistema de gestión LB — tiempo real</p>
         </div>
         <!-- Botones filtro módulo -->
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="dash-filter-btns">
@@ -1038,7 +1038,7 @@ input[type="file"]{display:none;}
     <div class="form-grid">
       <div class="form-group"><label>Nombre completo *</label><input id="u-nombre" placeholder="Ej: Luis Bustos"></div>
       <div class="form-group"><label>Usuario * <span style="font-size:.8em;color:#6a8a80">(sin espacios)</span></label><input id="u-usuario" placeholder="Ej: lbustos"></div>
-      <div class="form-group"><label>Email</label><input id="u-email" type="email" placeholder="Ej: luis@multotec.com"></div>
+      <div class="form-group"><label>Email</label><input id="u-email" type="email" placeholder="Ej: luis@ejemplo.com"></div>
       <div class="form-group"><label>Rol *</label>
         <select id="u-rol">
           <option value="Admin">Admin</option>
@@ -1950,7 +1950,7 @@ function buildVoucherHTML(v){
   return `<div style="font-family:'Segoe UI',sans-serif;padding:24px;background:white;max-width:700px;margin:0 auto">
     <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1a4d4d;padding-bottom:14px;margin-bottom:18px">
-      ${logoSrc?`<img src="${logoSrc}" style="height:52px;object-fit:contain">`:'<div style="font-size:1.3em;font-weight:800;color:#1a4d4d">MULTOTEC</div>'}
+      ${logoSrc?`<img src="${logoSrc}" style="height:52px;object-fit:contain">`:'<div style="font-size:1.3em;font-weight:800;color:#1a4d4d">Sistema LB</div>'}
       <div style="text-align:right">
         <div style="font-size:1.5em;font-weight:800;color:#1a4d4d">${v.numVaucher}</div>
         <div style="font-size:.88em;color:#6a8a80;margin-top:2px">${v.fecha}</div>
@@ -2005,7 +2005,7 @@ function buildVoucherHTML(v){
     </div>
     <!-- Footer -->
     <div style="text-align:center;margin-top:20px;font-size:.72em;color:#aaa;border-top:1px solid #eee;padding-top:10px">
-      Documento generado por WMS MULTOTEC · ${new Date().toLocaleString('es-CL')}
+      Documento generado por Sistema LB · ${new Date().toLocaleString('es-CL')}
     </div>
   </div>`;
 }
@@ -3182,7 +3182,7 @@ function refreshPreview(){
     card.style.cssText='width:380px;background:white;border-radius:12px;border:1.5px solid #d0e8dc;box-shadow:0 4px 16px rgba(0,0,0,.1);overflow:hidden;font-family:"Segoe UI",sans-serif;';
     card.innerHTML=`
       <div style="background:linear-gradient(135deg,#1a4d4d,#2e9e7a);padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
-        ${logoSrc?`<img src="${logoSrc}" style="height:30px;object-fit:contain;background:white;padding:3px 7px;border-radius:5px">`:'<div style="font-size:.8em;font-weight:800;color:white">MULTOTEC</div>'}
+        ${logoSrc?`<img src="${logoSrc}" style="height:30px;object-fit:contain;background:white;padding:3px 7px;border-radius:5px">`:'<div style="font-size:.8em;font-weight:800;color:white">Sistema LB</div>'}
         <div style="font-size:.6em;font-weight:700;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.1em">Identificación</div>
       </div>
       <div style="padding:14px 16px;display:flex;gap:14px;align-items:center">
@@ -3230,7 +3230,7 @@ function imprimirMarcas(){
 
     const logoHTML=logoSrc
       ?`<img src="${logoSrc}" style="max-height:64px;max-width:180px;object-fit:contain;display:block">`
-      :`<span style="font-size:1.5em;font-weight:900;color:white;letter-spacing:.06em">MULTOTEC</span>`;
+      :`<span style="font-size:1.5em;font-weight:900;color:white;letter-spacing:.06em">Sistema LB</span>`;
 
     const desc2HTML=row.desc2
       ?`<div class="desc2-txt">${row.desc2}</div>`:'';
@@ -3282,7 +3282,7 @@ function imprimirMarcas(){
   const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<title>Etiquetas MULTOTEC</title>
+<title>Etiquetas Sistema LB</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Segoe UI',Arial,sans-serif;background:#e8eeec;}
