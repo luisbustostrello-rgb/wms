@@ -1686,7 +1686,7 @@ async function mergItems(newArr){
 }
 function downloadJSON(){const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(items,null,2));a.download='inventario.json';a.click();}
 function downloadExcel(){
-  const ws=XLSX.utils.json_to_sheet(items.map(i=>({'SKU':i.sku,'DESC1':i.desc1,'DESC2':i.desc2,'CATEGORIA':i.categoria,'BU1':i.bu1,'BU2':i.bu2,'BU3':i.bu3,'BU4':i.bu4,'BU5':i.bu5,'TRANSITO':i.transito,'UM':i.um,'P_UNI':i.pUni,'OBS':i.obs})));
+  const ws=XLSX.utils.json_to_sheet(items.map(i=>({'SKU':i.sku,'DESC1':i.desc1,'DESC2':i.desc2,'CATEGORIA':i.categoria,'BU1':i.bu1,'BU2':i.bu2,'BU3':i.bu3,'BU4':i.bu4,'BU5':i.bu5,'TRANSITO':i.transito,'UM':i.um,'P_UNI':i.pUni,'OBS':i.obs,'UBICACIONES':(window.lyLocText?window.lyLocText(i.sku):'')})));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Inventario');XLSX.writeFile(wb,'inventario.xlsx');
 }
 function downloadTemplate(){
@@ -1853,7 +1853,7 @@ function updateStats(){
   if(s('stat-val'))s('stat-val').textContent=fmtMoney(valHoy);
 }
 function exportMovExcel(){
-  const ws=XLSX.utils.json_to_sheet(movimientos.map(m=>({'Fecha':m.fecha,'Tipo':m.tipo,'SKU':m.sku,'Desc':m.desc1,'Bodega':m.bodega,'Cantidad':m.cantidad,'P.Uni':m.pUniReg,'P.Pond':m.pPonderado,'Total':m.total,'Motivo':m.motivo,'Guía':m.guia,'Proveedor':m.proveedor})));
+  const ws=XLSX.utils.json_to_sheet(movimientos.map(m=>({'Fecha':m.fecha,'Tipo':m.tipo,'SKU':m.sku,'Ubicación':(window.lyLocText?window.lyLocText(m.sku):''),'Desc':m.desc1,'Bodega':m.bodega,'Cantidad':m.cantidad,'P.Uni':m.pUniReg,'P.Pond':m.pPonderado,'Total':m.total,'Motivo':m.motivo,'Guía':m.guia,'Proveedor':m.proveedor})));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Movimientos');XLSX.writeFile(wb,'movimientos.xlsx');
 }
 function exportMovJSON(){const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(movimientos,null,2));a.download='movimientos.json';a.click();}
@@ -2286,7 +2286,7 @@ function limpiarFiltros(){
 }
 function exportKardexExcel(){
   if(!kdResultados.length){toast('⚠️ Primero realiza una búsqueda');return;}
-  const ws=XLSX.utils.json_to_sheet(kdResultados.map(r=>({'Fecha':r.fecha,'Tipo':r.tipo,'SKU':r.sku,'Desc.':r.desc1,'Bodega':r.bodega,'Cantidad':r.cantidad,'P.Uni':r.pUniReg||r.pUni,'P.Pond':r.pPonderado,'Total':r.total,'Motivo':r.motivo,'Guía':r.guia,'Proveedor':r.proveedor})));
+  const ws=XLSX.utils.json_to_sheet(kdResultados.map(r=>({'Fecha':r.fecha,'Tipo':r.tipo,'SKU':r.sku,'Ubicación':(window.lyLocText?window.lyLocText(r.sku):''),'Desc.':r.desc1,'Bodega':r.bodega,'Cantidad':r.cantidad,'P.Uni':r.pUniReg||r.pUni,'P.Pond':r.pPonderado,'Total':r.total,'Motivo':r.motivo,'Guía':r.guia,'Proveedor':r.proveedor})));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Kardex');XLSX.writeFile(wb,'kardex.xlsx');
 }
 
@@ -3922,7 +3922,7 @@ window.xRep=async function(){await loadMin();const t=$('in-t').value,d1=$('in-d1
  const inR=m=>{const f=(m.fechaObj||'').slice(0,10);return(!d1||f>=d1)&&(!d2||f<=d2);};
  if(t==='val'){ti='Valorización por categoría';const g={};items.forEach(i=>{const k=i.categoria||'SIN CATEGORÍA';g[k]=g[k]||{Categoría:k,SKUs:0,Unidades:0,Valor:0};g[k].SKUs++;g[k].Unidades+=tot(i);g[k].Valor+=Math.round(tot(i)*(i.pUni||0));});r=Object.values(g).sort((a,b)=>b.Valor-a.Valor);}
  else if(t==='ubi'){ti='Ubicaciones por SKU';r=window.lyReportRows?await window.lyReportRows():[];}
- else if(t==='bod'){ti='Stock por bodega';r=items.filter(i=>tot(i)>0).map(i=>({SKU:i.sku,Descripción:i.desc1,BU1:i.bu1||0,BU2:i.bu2||0,BU3:i.bu3||0,BU4:i.bu4||0,BU5:i.bu5||0,Total:tot(i)}));}
+ else if(t==='bod'){ti='Stock por bodega';r=items.filter(i=>tot(i)>0).map(i=>({SKU:i.sku,Descripción:i.desc1,BU1:i.bu1||0,BU2:i.bu2||0,BU3:i.bu3||0,BU4:i.bu4||0,BU5:i.bu5||0,Total:tot(i),Ubicaciones:(window.lyLocText?window.lyLocText(i.sku):'')}));}
  else if(t==='mov'){ti='Movimientos';r=movimientos.filter(inR).map(m=>({Fecha:m.fecha,Tipo:m.tipo,SKU:m.sku,Descripción:m.desc1,Bodega:m.bodega,Cantidad:m.cantidad,Total:Math.round(m.total||0),Motivo:m.motivo||''}));}
  else if(t==='top'){ti='Top SKUs más movidos';const g={};movimientos.filter(inR).forEach(m=>{g[m.sku]=g[m.sku]||{SKU:m.sku,Descripción:m.desc1,Movimientos:0,Unidades:0};g[m.sku].Movimientos++;g[m.sku].Unidades+=Math.abs(m.cantidad||0);});r=Object.values(g).sort((a,b)=>b.Movimientos-a.Movimientos).slice(0,50);}
  else if(t==='sin'){ti='SKUs con stock sin movimiento (90 días)';const lim=Date.now()-90*864e5,act=new Set(movimientos.filter(m=>new Date(m.fechaObj)>lim).map(m=>m.sku));r=items.filter(i=>tot(i)>0&&!act.has(i.sku)).map(i=>({SKU:i.sku,Descripción:i.desc1,Stock:tot(i),Valor:Math.round(tot(i)*(i.pUni||0))})).sort((a,b)=>b.Valor-a.Valor);}
@@ -3970,8 +3970,8 @@ function resolve(txt){const t=String(txt||'').trim().toUpperCase();let m=t.match
  if(m){z=LY.z.find(x=>x.pre===m[1]&&x.kind==='rack');if(z&&+m[2]>=1&&+m[2]<=z.cols&&+m[3]>=1&&+m[3]<=z.lvls)return{z,c:+m[2],l:+m[3]};return null;}
  m=t.match(/^(.+?)[|:;](\d+)[|:;](\d+)$/);if(m){z=LY.z.find(x=>x.kind==='rack'&&(x.id.toUpperCase()===m[1]||x.pre===m[1]||x.name.toUpperCase()===m[1]));if(z&&+m[2]<=z.cols&&+m[3]<=z.lvls)return{z,c:+m[2],l:+m[3]};return null;}
  z=LY.z.find(x=>x.kind==='floor'&&(x.pre===t||x.name.toUpperCase()===t||x.id.toUpperCase()===t));return z?{z,c:1,l:1}:null;}
-async function load(){if(loaded)return;try{const v=await supaGetConfig('layout_v1');if(v&&v.z)LY=v;norm();loaded=true;}catch(e){}}
-function save(){clearTimeout(tm);tm=setTimeout(async()=>{try{await supaSetConfig('layout_v1',LY);}catch(e){toast('⚠️ No se pudo guardar el layout');}},500);}
+async function load(){if(loaded)return;try{const v=await supaGetConfig('layout_v1');if(v&&v.z)LY=v;norm();MC=null;loaded=true;}catch(e){}}
+function save(){MC=null;setTimeout(()=>{try{refreshCells();}catch(e){}},150);clearTimeout(tm);tm=setTimeout(async()=>{try{await supaSetConfig('layout_v1',LY);}catch(e){toast('⚠️ No se pudo guardar el layout');}},500);}
 const assigned=s=>Object.values(LY.loc).flat().reduce((a,x)=>a+(x.sku===s?+x.qty:0),0);
 // ── Vista y menú ──
 const W=document.querySelector('.views-wrap'),an=[...document.querySelectorAll('.sidebar .menu-item')].find(e=>/Alertas/.test(e.textContent));
@@ -3979,7 +3979,7 @@ const m=document.createElement('div');m.className='menu-item';m.setAttribute('on
 const v=document.createElement('div');v.className='view';v.id='view-layout';
 v.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">🧱 Layout de <span>Racks</span></div></div>
 <div class="x-grid" id="ly-st"></div>
-<div class="x-bar"><button class="x-btn" id="ly-b3" onclick="lyMode('3d')">🧊 Vista 3D</button><button class="x-btn alt" id="ly-b2" onclick="lyMode('2d')">🟩 Plano 2D</button><input id="ly-q" placeholder="🔍 Buscar código en el layout…" oninput="lyFind()" style="min-width:210px"><input id="ly-go" placeholder="Ir a ubicación: RB-C04-P01" onkeydown="if(event.key==='Enter')lyGo()" style="min-width:210px"><button class="x-btn" onclick="lyScanLoc()">📷 Escanear ubicación</button><button class="x-btn alt" onclick="lyLabels()">🖨️ Etiquetas QR</button><button class="x-btn alt" onclick="lyAddZone('rack')">➕ Nuevo rack</button><button class="x-btn alt" onclick="lyAddZone('floor')">➕ Zona de piso</button></div>
+<div class="x-bar"><button class="x-btn" id="ly-b3" onclick="lyMode('3d')">🧊 Vista 3D</button><button class="x-btn alt" id="ly-b2" onclick="lyMode('2d')">🟩 Plano 2D</button><input id="ly-q" placeholder="🔍 Buscar código en el layout…" oninput="lyFind()" style="min-width:210px"><input id="ly-go" placeholder="Ir a ubicación: RB-C04-P01" onkeydown="if(event.key==='Enter')lyGo()" style="min-width:210px"><button class="x-btn" onclick="lyScanLoc()">📷 Escanear ubicación</button><button class="x-btn alt" onclick="lyLabels()">🖨️ Etiquetas QR</button><button class="x-btn alt" onclick="lyXls()">📊 Excel ubicaciones</button><button class="x-btn alt" onclick="lyTpl()">⬇️ Plantilla</button><button class="x-btn alt ly-w" onclick="lyUpload()">⬆️ Subir plantilla</button><button class="x-btn alt ly-w" onclick="lyMassDel()">🗑️ Borrado masivo</button><button class="x-btn alt" onclick="lyAddZone('rack')">➕ Nuevo rack</button><button class="x-btn alt" onclick="lyAddZone('floor')">➕ Zona de piso</button></div>
 <div class="x-card" id="ly-fr" style="display:none"></div>
 <div id="ly-3d"><div class="x-bar"><button class="x-btn alt" onclick="lyZoom(.1)">＋</button><button class="x-btn alt" onclick="lyZoom(-.1)">－</button><button class="x-btn alt" onclick="lyRot(-22,-28)">⟲ Reiniciar</button><button class="x-btn alt" onclick="lyRot(-8,0)">Frente</button><button class="x-btn alt" onclick="lyRot(-80,0)">Planta</button><small style="color:var(--t-text);opacity:.7">Arrastra para girar · toca una ubicación para editarla</small></div><div id="ly-sc"><div id="ly-w"></div></div></div>
 <div id="ly-2d" style="display:none"></div>
@@ -4081,6 +4081,74 @@ window.lyRm=n=>{const k=key(...cur);LY.loc[k].splice(n,1);if(!LY.loc[k].length)d
 window.lyClear=()=>{delete LY.loc[key(...cur)];save();edit();};
 window.lyCloseMod=()=>closeMod();
 window.lyData=()=>LY;
+// ══ Ubicaciones en todo el sistema + Excel + carga/borrado masivo ══
+let MC=null;
+const getMap=()=>{if(MC)return MC;const m={};Object.entries(LY.loc).forEach(([k,a])=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);if(!z)return;a.forEach(x=>{(m[String(x.sku).trim().toLowerCase()]=m[String(x.sku).trim().toLowerCase()]||[]).push({code:code(z,+c,+l),zid,c:+c,l:+l,qty:+x.qty||0});});});Object.values(m).forEach(a=>a.sort((p,q)=>p.code.localeCompare(q.code)));return MC=m;};
+window.lyLocText=sku=>{try{const a=getMap()[String(sku).trim().toLowerCase()];return a?a.map(o=>`${o.code} (${o.qty})`).join('; '):'';}catch(e){return '';}};
+const chips=a=>!a?'<span style="opacity:.45">—</span>':a.slice(0,2).map(o=>`<span class="ly-chip" onclick="event.stopPropagation();lyOpen('${o.zid}',${o.c},${o.l})" title="Abrir ubicación">${esc(o.code)} <b>${o.qty}</b></span>`).join('')+(a.length>2?`<span class="ly-chip more" title="${esc(a.map(o=>o.code+' ('+o.qty+')').join(', '))}">+${a.length-2}</span>`:'');
+const hd=t=>(t.tHead&&t.tHead.rows[0])||null,ht=th=>th.textContent.replace(/[↕▲▼]/g,'').trim().toUpperCase();
+function refreshCells(){const M=getMap();document.querySelectorAll('td.ly-td').forEach(td=>{td.innerHTML=chips(M[String(td.dataset.sku).trim().toLowerCase()]);});}
+let busy=false;
+async function decorate(){if(busy||!items.length)return;busy=true;try{await load();const M=getMap();
+ document.querySelectorAll('#view-inventario table,#view-entradas table,#view-traspaso table,#view-kardex table,#view-marcas table').forEach(t=>{
+  if(t.classList.contains('lineas-table')||t.classList.contains('x-tbl'))return;const hr=hd(t);if(!hr)return;
+  const ths=[...hr.cells],extra=hr.querySelector('th.ly-th')?1:0,si=ths.findIndex(h=>ht(h)==='SKU');if(si<0)return;
+  let di=ths.findIndex(h=>/^DESC/.test(ht(h)));let at=(di>=0?Math.max(di,si):si)+1;
+  if(ths[at-1]&&/^DESC/.test(ht(ths[at]||document.createElement('th'))))at++;
+  if(!extra){const th=document.createElement('th');th.className='ly-th';th.textContent='UBICACIÓN';hr.insertBefore(th,hr.cells[at]||null);}
+  else at=[...hr.cells].findIndex(h=>h.classList.contains('ly-th'));
+  const n=hr.cells.length-1;
+  [...t.tBodies].forEach(b=>[...b.rows].forEach(tr=>{if(tr.querySelector('td.ly-td')||tr.cells.length!==n)return;
+   const sku=(tr.cells[si]?tr.cells[si].textContent:'').trim();const td=document.createElement('td');td.className='ly-td';td.dataset.sku=sku;td.innerHTML=chips(M[sku.toLowerCase()]);tr.insertBefore(td,tr.cells[at]||null);}));});
+ }catch(e){}busy=false;}
+const st=document.createElement('style');st.textContent='.ly-chip{display:inline-block;background:#d1fae5;color:#065f46;border-radius:8px;padding:1px 7px;margin:1px 2px;font-size:.78em;cursor:pointer;white-space:nowrap}.ly-chip b{color:#047857}.ly-chip.more{background:#e5e7eb;color:#374151}.ly-chip:hover{filter:brightness(.93)}';document.head.appendChild(st);
+let dt=null;new MutationObserver(()=>{clearTimeout(dt);dt=setTimeout(decorate,300);}).observe(document.querySelector('.views-wrap'),{childList:true,subtree:true});
+setInterval(decorate,5000);
+// ── Excel de ubicaciones ──
+const allLocs=()=>{const R=[];LY.z.forEach(z=>cells(z).forEach(([c,l])=>R.push({z,c,l})));return R;};
+window.lyXls=async()=>{await load();const occ=[],emp=[];
+ allLocs().forEach(({z,c,l})=>{const ls=get(z.id,c,l);if(!ls.length)return emp.push({'Ubicación':code(z,c,l),Zona:z.name,Columna:z.kind==='floor'?'':c,Nivel:z.kind==='floor'?'':l});
+  ls.forEach(x=>{const i=items.find(a=>String(a.sku)===String(x.sku))||{};occ.push({'Ubicación':code(z,c,l),Zona:z.name,Columna:z.kind==='floor'?'':c,Nivel:z.kind==='floor'?'':l,SKU:x.sku,'Descripción 1':i.desc1||'','Descripción 2':i.desc2||'','Categoría':i.categoria||'',Cantidad:x.qty,UM:i.um||''});});});
+ if(!occ.length&&!emp.length)return toast('⚠️ No hay ubicaciones');const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(occ.length?occ:[{Mensaje:'Sin material ubicado'}]),'Ubicaciones');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(emp.length?emp:[{Mensaje:'No hay ubicaciones vacías'}]),'Vacías');
+ XLSX.writeFile(wb,'ubicaciones_'+new Date().toISOString().slice(0,10)+'.xlsx');};
+window.lyTpl=async()=>{await load();const wb=XLSX.utils.book_new(),r=allLocs().slice(0,2);
+ const ex=[{UBICACION:r[0]?code(r[0].z,r[0].c,r[0].l):'RA-C01-P01',SKU:(items[0]||{}).sku||'10034',CANTIDAD:10},{UBICACION:r[1]?code(r[1].z,r[1].c,r[1].l):'RA-C01-P02',SKU:(items[1]||{}).sku||'60004',CANTIDAD:5}];
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(ex),'Plantilla');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{Instrucciones:'1) Una fila por cada SKU en cada ubicación. Una ubicación puede repetirse con varios SKUs.'},{Instrucciones:'2) UBICACION: usa los códigos de la hoja "Ubicaciones válidas" (ej. RB-C04-P01).'},{Instrucciones:'3) SKU debe existir en el inventario. CANTIDAD debe ser mayor a 0.'},{Instrucciones:'4) Borra las filas de ejemplo antes de cargar.'}]),'Instrucciones');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(allLocs().map(({z,c,l})=>({'Ubicaciones válidas':code(z,c,l)}))),'Ubicaciones válidas');
+ XLSX.writeFile(wb,'plantilla_ubicaciones.xlsx');};
+// ── Carga masiva desde plantilla ──
+let UP=null;const fi=document.createElement('input');fi.type='file';fi.id='ly-file';fi.accept='.xlsx,.xls,.csv';fi.style.display='none';document.body.appendChild(fi);
+window.lyUpload=()=>{fi.value='';fi.click();};
+fi.onchange=async()=>{const f=fi.files[0];if(!f)return;await load();
+ try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}),idx=new Map(items.map(i=>[String(i.sku).trim().toLowerCase(),i])),ok=[],errs=[];
+  const kf=(o,re)=>Object.keys(o).find(k=>re.test(k.trim()));
+  rows.forEach((o,n)=>{const ku=kf(o,/ubic/i),ks=kf(o,/^sku/i),kq=kf(o,/cant/i),loc=String(o[ku]??'').trim(),sku=String(o[ks]??'').trim(),q=Number(o[kq]);
+   if(!loc&&!sku&&o[kq]==='')return;const ln=n+2;
+   if(!ku||!ks||!kq)return errs.push([ln,'Faltan columnas UBICACION, SKU o CANTIDAD']);
+   const r=resolve(loc);if(!r)return errs.push([ln,'Ubicación no válida: '+(loc||'(vacía)')]);
+   const it=idx.get(sku.toLowerCase());if(!it)return errs.push([ln,'SKU no existe: '+(sku||'(vacío)')]);
+   if(!(q>0))return errs.push([ln,'Cantidad inválida: '+o[kq]]);ok.push({z:r.z,c:r.c,l:r.l,sku:it.sku,q});});
+  UP={ok,errs};
+  $('ly-mb').innerHTML=`<h3>⬆️ Carga masiva de ubicaciones</h3><p style="margin:8px 0">✅ <b>${ok.length}</b> filas válidas · ${errs.length?`⚠️ <b>${errs.length}</b> con error (no se cargarán)`:'sin errores'}</p>
+  ${errs.length?`<div style="max-height:150px;overflow:auto;font-size:.8em;background:rgba(0,0,0,.25);border-radius:10px;padding:8px;margin-bottom:8px">${errs.slice(0,25).map(e=>`Fila ${e[0]}: ${esc(e[1])}`).join('<br>')}${errs.length>25?'<br>…':''}</div>`:''}
+  <label style="display:block;margin:6px 0"><input type="radio" name="lm" value="add" checked> <b>Sumar</b> a lo que ya hay en esas ubicaciones</label>
+  <label style="display:block;margin:6px 0"><input type="radio" name="lm" value="rep"> <b>Reemplazar</b> el contenido de las ubicaciones del archivo</label>
+  <div class="x-bar" style="margin-top:12px"><button class="x-btn ly-w" onclick="lyUpApply()" ${ok.length?'':'disabled'}>Cargar ${ok.length} filas</button><button class="x-btn alt" onclick="lyCloseMod()">Cancelar</button></div>`;$('ly-mod').style.display='flex';
+ }catch(e){toast('⚠️ No se pudo leer el archivo. Usa la plantilla .xlsx');}};
+window.lyUpApply=()=>{if(!UP)return;const rep=(document.querySelector('input[name=lm]:checked')||{}).value==='rep';
+ if(rep)new Set(UP.ok.map(r=>key(r.z.id,r.c,r.l))).forEach(k=>delete LY.loc[k]);
+ UP.ok.forEach(r=>{const k=key(r.z.id,r.c,r.l),a=LY.loc[k]=LY.loc[k]||[],e=a.find(x=>String(x.sku)===String(r.sku));if(e)e.qty+=r.q;else a.push({sku:r.sku,qty:r.q});});
+ const n=UP.ok.length;UP=null;save();closeMod();toast(`✅ ${n} filas cargadas en el layout`);};
+// ── Borrado masivo ──
+window.lyMassDel=()=>{$('ly-mb').innerHTML=`<h3>🗑️ Borrado masivo de ubicaciones</h3><p style="font-size:.82em;opacity:.85;margin:6px 0">Quita el material asignado a las ubicaciones. <b>No modifica el stock del inventario</b>: solo vacía el layout.</p>
+ <div class="x-bar"><select id="lm-z" onchange="lyMassCnt()"><option value="ALL">Todas las zonas</option>${LY.z.map(z=>`<option value="${esc(z.id)}">${esc(z.name)}</option>`).join('')}</select></div><p id="lm-c" style="margin:8px 0"></p>
+ <div class="x-bar"><input id="lm-t" placeholder='Escribe BORRAR para confirmar' style="flex:1"><button class="x-btn ly-w" onclick="lyMassGo()">Borrar</button><button class="x-btn alt" onclick="lyCloseMod()">Cancelar</button></div>`;$('ly-mod').style.display='flex';lyMassCnt();};
+const mk2=z=>Object.keys(LY.loc).filter(k=>z==='ALL'||k.startsWith(z+'|'));
+window.lyMassCnt=()=>{const ks=mk2($('lm-z').value);$('lm-c').textContent=`Se vaciarán ${ks.length} ubicaciones (${ks.reduce((a,k)=>a+LY.loc[k].length,0)} códigos).`;};
+window.lyMassGo=()=>{if($('lm-t').value.trim().toUpperCase()!=='BORRAR')return toast('Escribe BORRAR para confirmar');const ks=mk2($('lm-z').value);ks.forEach(k=>delete LY.loc[k]);save();closeMod();toast(`🗑️ ${ks.length} ubicaciones vaciadas`);};
+
 window.lyReportRows=async()=>{await load();const R=[];Object.entries(LY.loc).forEach(([k,a])=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);if(!z)return;a.forEach(x=>{const i=items.find(t=>String(t.sku)===String(x.sku));R.push({Ubicación:code(z,+c,+l),Zona:z.name,SKU:x.sku,Descripción:i?i.desc1:'',Cantidad:x.qty});});});return R.sort((a,b)=>a.Ubicación.localeCompare(b.Ubicación));};
 // ── Auto-descuento por salidas ──
 window.lyDeduct=async function(sku,qty,id){await load();LY.done=LY.done||[];if(id&&LY.done.includes(id))return;if(id)LY.done.push(id);if(LY.done.length>400)LY.done.shift();
@@ -4169,7 +4237,7 @@ window.ltR=async function(){await load();$('lt-dl').innerHTML=items.slice(0,3000
  view=LT.filter(l=>(!q||(l.sku+l.lote).toLowerCase().includes(q))&&(!f||(f==='v'?days(l.venc)<0:days(l.venc)<=+f))).sort((a,b)=>a.venc.localeCompare(b.venc));
  const c=(fn)=>LT.filter(fn).length;
  $('lt-st').innerHTML=[['Lotes',LT.length],['🔴 Vencidos',c(l=>days(l.venc)<0)],['🟠 ≤30 días',c(l=>days(l.venc)>=0&&days(l.venc)<=30)],['🟡 ≤90 días',c(l=>days(l.venc)>30&&days(l.venc)<=90)]].map(([a,b])=>`<div class="x-card"><h3>${a}</h3><p>${b}</p></div>`).join('');
- $('lt-t').innerHTML=`<table class="x-tbl"><tr><th>SKU</th><th>Descripción</th><th>Lote</th><th>Vence</th><th>Días</th><th>Cant.</th><th>Estado</th><th></th></tr>${view.map(l=>{const i=items.find(a=>String(a.sku)===String(l.sku)),[e,col]=est(l.venc),n=days(l.venc);return`<tr><td>${esc(l.sku)}</td><td>${esc(i?i.desc1:'')}</td><td>${esc(l.lote)}</td><td>${l.venc.split('-').reverse().join('/')}</td><td>${n}</td><td><input type="number" min="0" value="${l.qty}" style="width:70px" onchange="ltQty('${l.id}',this.value)"></td><td style="color:${col};font-weight:700">${e}</td><td><button class="lt-w" onclick="ltDel('${l.id}')">✕</button></td></tr>`}).join('')||'<tr><td colspan=8>Sin lotes registrados.</td></tr>'}</table>`;badge();};
+ $('lt-t').innerHTML=`<table class="x-tbl"><tr><th>SKU</th><th>Descripción</th><th>Ubicación</th><th>Lote</th><th>Vence</th><th>Días</th><th>Cant.</th><th>Estado</th><th></th></tr>${view.map(l=>{const i=items.find(a=>String(a.sku)===String(l.sku)),[e,col]=est(l.venc),n=days(l.venc);return`<tr><td>${esc(l.sku)}</td><td>${esc(i?i.desc1:'')}</td><td>${esc(window.lyLocText?window.lyLocText(l.sku):'')}</td><td>${esc(l.lote)}</td><td>${l.venc.split('-').reverse().join('/')}</td><td>${n}</td><td><input type="number" min="0" value="${l.qty}" style="width:70px" onchange="ltQty('${l.id}',this.value)"></td><td style="color:${col};font-weight:700">${e}</td><td><button class="lt-w" onclick="ltDel('${l.id}')">✕</button></td></tr>`}).join('')||'<tr><td colspan=9>Sin lotes registrados.</td></tr>'}</table>`;badge();};
 window.ltXls=()=>{if(!view.length)return toast('⚠️ Sin datos');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(view.map(l=>({SKU:l.sku,Lote:l.lote,Vencimiento:l.venc,Días:days(l.venc),Cantidad:l.qty,Estado:est(l.venc)[0]}))),'Lotes');XLSX.writeFile(wb,'lotes_vencimientos.xlsx');};
 const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='lotes')setTimeout(ltR,120);};
 setInterval(async()=>{if(items.length){await load();badge();}},7000);
