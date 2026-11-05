@@ -275,6 +275,43 @@ input[type="file"]{display:none;}
 @media print{.sidebar,.no-print{display:none!important;} body{overflow:visible;height:auto;} .views-wrap{overflow:visible;height:auto;}}
 
 /* ══ TEMAS Y EFECTOS ══ */
+/* Invitado: sin botones de escritura */
+body.guest [onclick^="openModal("],
+body.guest [onclick^="openBulkModal("],
+body.guest [onclick^="saveItem("],
+body.guest [onclick^="deleteSelected("],
+body.guest [onclick^="confirmDelete("],
+body.guest [onclick^="registrarMovimiento("],
+body.guest [onclick^="procesarTraspaso("],
+body.guest [onclick^="openDespachoModal("],
+body.guest [onclick^="openEditDespacho("],
+body.guest [onclick^="deleteDespacho("],
+body.guest [onclick^="saveDespacho("],
+body.guest [onclick^="openEditMov("],
+body.guest [onclick^="pedirAnular("],
+body.guest [onclick^="pedirLimpiar("],
+body.guest [onclick^="openProveedorModal("],
+body.guest [onclick^="saveProveedor("],
+body.guest [onclick^="agregarMarca("],
+body.guest [onclick^="limpiarMarcas("],
+body.guest [onclick^="delMarcaFila("],
+body.guest [onclick^="lyAddZone("],
+body.guest [onclick^="lyDim("],
+body.guest [onclick^="lyRen("],
+body.guest [onclick^="lyDel("],
+body.guest [onclick^="lyAdd("],
+body.guest [onclick^="lyRm("],
+body.guest [onclick^="lyClear("],
+body.guest [onclick^="lyStep("],
+body.guest [onclick^="lyScanSku("],
+body.guest [onclick^="lySaveClose("],
+body.guest [onclick^="xMinAll("],
+body.guest [onclick^="xCtAdd("],
+body.guest [onclick^="xCtApply("],
+body.guest [onclick^="CONT_rm("],
+body.guest [onclick^="addLinea("],
+body.guest [onclick^="delLinea("],
+body.guest #ly-s,body.guest #ly-n,body.guest #ly-fast,body.guest #ly-mb input[type=number]{display:none!important;}
 #theme-btn,#change-bg-btn{display:none!important;}
 #login-screen>div{animation:cardIn .7s cubic-bezier(.2,.7,.2,1) both;}
 #login-screen input:focus{border-color:var(--t-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--t-accent) 30%,transparent);}
@@ -3930,13 +3967,14 @@ function save(){clearTimeout(tm);tm=setTimeout(async()=>{try{await supaSetConfig
 const assigned=s=>Object.values(LY.loc).flat().reduce((a,x)=>a+(x.sku===s?+x.qty:0),0);
 // ── Vista y menú ──
 const W=document.querySelector('.views-wrap'),an=[...document.querySelectorAll('.sidebar .menu-item')].find(e=>/Alertas/.test(e.textContent));
-const m=document.createElement('div');m.className='menu-item';m.setAttribute('onclick',"showView('layout',this)");m.innerHTML='🧱 Layout Racks 3D';an.parentNode.insertBefore(m,an);
+const m=document.createElement('div');m.className='menu-item';m.setAttribute('onclick',"showView('layout',this)");m.innerHTML='🧱 Layout Racks 3D <span id="ly-badge" style="display:none;background:#f59e0b;border-radius:10px;padding:0 7px;font-size:.8em;margin-left:4px"></span>';an.parentNode.insertBefore(m,an);
 const v=document.createElement('div');v.className='view';v.id='view-layout';
 v.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">🧱 Layout de <span>Racks</span></div></div>
 <div class="x-grid" id="ly-st"></div>
-<div class="x-bar"><button class="x-btn" id="ly-b3" onclick="lyMode('3d')">🧊 Vista 3D</button><button class="x-btn alt" id="ly-b2" onclick="lyMode('2d')">🟩 Plano 2D</button><input id="ly-q" placeholder="🔍 Buscar código en el layout…" oninput="lyFind()" style="min-width:210px"><button class="x-btn" onclick="lyScanLoc()">📷 Escanear ubicación</button><button class="x-btn alt" onclick="lyAddZone('rack')">➕ Nuevo rack</button><button class="x-btn alt" onclick="lyAddZone('floor')">➕ Zona de piso</button></div>
+<div class="x-bar"><button class="x-btn" id="ly-b3" onclick="lyMode('3d')">🧊 Vista 3D</button><button class="x-btn alt" id="ly-b2" onclick="lyMode('2d')">🟩 Plano 2D</button><input id="ly-q" placeholder="🔍 Buscar código en el layout…" oninput="lyFind()" style="min-width:210px"><button class="x-btn" onclick="lyScanLoc()">📷 Escanear ubicación</button><button class="x-btn alt" onclick="lyLabels()">🖨️ Etiquetas QR</button><button class="x-btn alt" onclick="lyAddZone('rack')">➕ Nuevo rack</button><button class="x-btn alt" onclick="lyAddZone('floor')">➕ Zona de piso</button></div>
 <div id="ly-3d"><div class="x-bar"><button class="x-btn alt" onclick="lyZoom(.1)">＋</button><button class="x-btn alt" onclick="lyZoom(-.1)">－</button><button class="x-btn alt" onclick="lyRot(-22,-28)">⟲ Reiniciar</button><button class="x-btn alt" onclick="lyRot(-8,0)">Frente</button><button class="x-btn alt" onclick="lyRot(-80,0)">Planta</button><small style="color:var(--t-text);opacity:.7">Arrastra para girar · toca una ubicación para editarla</small></div><div id="ly-sc"><div id="ly-w"></div></div></div>
 <div id="ly-2d" style="display:none"></div>
+<div class="x-card" id="ly-un"></div>
 <div class="x-card" id="ly-ad"></div></div>`;W.appendChild(v);
 const css=document.createElement('style');css.textContent=`#ly-sc{height:62vh;min-height:380px;perspective:1600px;overflow:hidden;border-radius:16px;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.12),rgba(0,0,0,.35));border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;user-select:none}
 #ly-w{position:relative;width:0;height:0;transform-style:preserve-3d}.ly-o{position:absolute;width:0;height:0;transform-style:preserve-3d}
@@ -3974,7 +4012,7 @@ function zs(z){const cs=cells(z),f=cs.filter(([c,l])=>full(z.id,c,l)).length;ret
 function stats(){const a=LY.z.map(zs),T=a.reduce((x,y)=>x+y.t,0),F=a.reduce((x,y)=>x+y.f,0),p=T?Math.round(F*100/T):0;
  $('ly-st').innerHTML=`<div class="x-card"><h3>Ocupación total</h3><p>${p}%</p><div class="ly-pb"><i style="width:${p}%"></i></div></div><div class="x-card"><h3>🟩 Llenas</h3><p>${F}</p></div><div class="x-card"><h3>🟥 Vacías</h3><p>${T-F}</p></div><div class="x-card"><h3>Total ubicaciones</h3><p>${T}</p></div>`+LY.z.map((z,i)=>`<div class="x-card"><h3>${esc(z.name)}</h3><p>${a[i].p}%</p><small>${a[i].f} llenas · ${a[i].e} vacías</small></div>`).join('');
  $('ly-ad').innerHTML='<h3>⚙️ Administrar líneas de rack</h3>'+LY.z.map(z=>`<div class="x-bar" style="margin-top:8px"><b style="min-width:130px">${esc(z.name)}${z.kind==='rack'?` <small>(${z.cols}×${z.lvls})</small>`:' <small>(piso)</small>'}</b>${z.kind==='rack'?`<button class="x-btn alt" onclick="lyDim('${z.id}','cols',1)">＋Columna</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',1)">＋Nivel ↑</button><button class="x-btn alt" onclick="lyDim('${z.id}','cols',-1)">－Col</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',-1)">－Nivel</button>`:''}<button class="x-btn alt" onclick="lyRen('${z.id}')">✏️</button><button class="x-btn alt" onclick="lyDel('${z.id}')">🗑</button></div>`).join('');}
-function rr(){stats();if(mode==='3d')r3();else r2();}
+function rr(){stats();unplaced();if(mode==='3d')r3();else r2();}
 window.lyMode=md2=>{mode=md2;$('ly-3d').style.display=md2==='3d'?'':'none';$('ly-2d').style.display=md2==='2d'?'':'none';$('ly-b3').className='x-btn'+(md2==='3d'?'':' alt');$('ly-b2').className='x-btn'+(md2==='2d'?'':' alt');rr();};
 window.lyFind=()=>{const q=$('ly-q').value.trim().toLowerCase();hl=new Set();if(q)Object.values(LY.loc).flat().forEach(x=>{if(String(x.sku).toLowerCase().includes(q))hl.add(String(x.sku));});rr();};
 window.lyAddZone=k=>{const n=prompt('Nombre de la '+(k==='rack'?'línea de rack':'zona de piso')+':');if(!n)return;const z={id:'Z'+Date.now(),name:n.toUpperCase(),kind:k};
@@ -4029,6 +4067,35 @@ window.lyQty=(n,v)=>{if(+v>0){LY.loc[key(...cur)][n].qty=+v;save();}};
 window.lyStep=(n,d)=>{const x=LY.loc[key(...cur)][n];x.qty=Math.max(1,(+x.qty||1)+d);save();edit();};
 window.lyRm=n=>{const k=key(...cur);LY.loc[k].splice(n,1);if(!LY.loc[k].length)delete LY.loc[k];save();edit();};
 window.lyClear=()=>{delete LY.loc[key(...cur)];save();edit();};
+window.lyCloseMod=()=>closeMod();
+// ── Auto-descuento por salidas ──
+window.lyDeduct=async function(sku,qty,id){await load();LY.done=LY.done||[];if(id&&LY.done.includes(id))return;if(id)LY.done.push(id);if(LY.done.length>400)LY.done.shift();
+ let rem=+qty||0;const ks=Object.keys(LY.loc).filter(k=>LY.loc[k].some(x=>String(x.sku)===String(sku)));
+ for(const k of ks){if(rem<=0)break;const a=LY.loc[k],l=a.find(x=>String(x.sku)===String(sku)),t=Math.min(rem,+l.qty);l.qty-=t;rem-=t;if(l.qty<=0)a.splice(a.indexOf(l),1);if(!a.length)delete LY.loc[k];}
+ save();if(rem>0&&ks.length)toast(`🧱 Layout: ${rem} un. de ${sku} no estaban ubicadas`);else if(ks.length)toast('🧱 Layout actualizado por la salida');
+ if($('view-layout').classList.contains('active'))rr();else unplaced();};
+// ── Material sin ubicar ──
+function unp(){const ass={};Object.values(LY.loc).flat().forEach(x=>{ass[x.sku]=(ass[x.sku]||0)+(+x.qty||0);});return items.map(i=>({i,u:tot(i)-(ass[i.sku]||0)})).filter(o=>o.u>0).sort((a,b)=>b.u-a.u);}
+function unplaced(){const l=unp(),el=$('ly-un');if(!el)return;
+ el.innerHTML=`<h3>📦 Material sin ubicar (${l.length} SKUs)</h3>`+(l.length?`<div class="x-wrap" style="max-height:260px;overflow:auto;margin-top:8px"><table class="x-tbl"><tr><th>SKU</th><th>Descripción</th><th>Sin ubicar</th><th></th></tr>${l.slice(0,200).map(o=>`<tr><td>${esc(o.i.sku)}</td><td>${esc(o.i.desc1)}</td><td>${o.u}</td><td><button class="x-btn ly-w" onclick="lyPlace('${esc(o.i.sku)}')">Ubicar</button></td></tr>`).join('')}</table></div>`:'<p style="margin-top:6px">✅ Todo el stock está ubicado.</p>');
+ const b=$('ly-badge');if(b){b.style.display=l.length?'inline-block':'none';b.textContent=l.length;}}
+window.lyPlace=sku=>{const i=items.find(a=>String(a.sku)===String(sku));if(!i)return;const un=tot(i)-assigned(i.sku);
+ $('ly-mb').innerHTML=`<h3>Ubicar ${esc(sku)}</h3><p style="font-size:.82em;opacity:.8">${esc(i.desc1||'')} · sin ubicar ${un}</p><div class="x-bar" style="margin-top:10px"><select id="lp-z">${LY.z.map(z=>`<option value="${esc(z.id)}">${esc(z.name)}</option>`).join('')}</select><input id="lp-c" type="number" min="1" placeholder="Col" style="width:70px"><input id="lp-l" type="number" min="1" placeholder="Nivel" style="width:70px"><input id="lp-q" type="number" min="1" value="${Math.max(un,1)}" style="width:80px"></div><div class="x-bar" style="margin-top:10px"><button class="x-btn alt" onclick="lySuggest()">💡 Sugerir vacía</button><button class="x-btn" onclick="lyPlaceOk('${esc(sku)}')">Guardar</button><button class="x-btn alt" onclick="lyCloseMod()">Cancelar</button></div>`;$('ly-mod').style.display='flex';};
+window.lySuggest=()=>{for(const z of LY.z)for(const[c,l]of cells(z).sort((a,b)=>a[0]-b[0]||a[1]-b[1]))if(!full(z.id,c,l)){$('lp-z').value=z.id;$('lp-c').value=c;$('lp-l').value=l;return;}toast('No hay ubicaciones vacías');};
+window.lyPlaceOk=sku=>{const z=LY.z.find(x=>x.id===$('lp-z').value),q=+$('lp-q').value;let c=+$('lp-c').value,l=+$('lp-l').value;if(z.kind==='floor'){c=1;l=1;}
+ if(!z||!(q>0)||!(c>=1&&l>=1)||(z.kind==='rack'&&(c>z.cols||l>z.lvls)))return toast('⚠️ Ubicación inválida');
+ const i=items.find(a=>String(a.sku)===String(sku));cur=[z.id,c,l];addSku(i,q,true);closeMod();toast('✅ Ubicado');};
+// ── Etiquetas QR ──
+let qrP=null;const qrLib=()=>qrP||(qrP=new Promise(r=>{if(window.QRCode)return r();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';s.onload=r;s.onerror=r;document.head.appendChild(s);}));
+window.lyLabels=()=>{$('ly-mb').innerHTML=`<h3>🖨️ Etiquetas QR</h3><p style="font-size:.82em;opacity:.8;margin:6px 0">Elige qué zona imprimir:</p><div class="x-bar">${LY.z.map(z=>`<button class="x-btn alt" onclick="lyPrintQR('${esc(z.id)}')">${esc(z.name)}</button>`).join('')}<button class="x-btn" onclick="lyPrintQR('ALL')">Todas</button></div><div class="x-bar" style="margin-top:12px"><button class="x-btn alt" onclick="lyCloseMod()">Cerrar</button></div>`;$('ly-mod').style.display='flex';};
+window.lyPrintQR=async id=>{await qrLib();if(!window.QRCode)return toast('⚠️ No se pudo cargar el generador de QR (revisa internet)');
+ const zs=id==='ALL'?LY.z:LY.z.filter(z=>z.id===id),tmp=document.createElement('div');tmp.style.cssText='position:fixed;left:-9999px';document.body.appendChild(tmp);const L=[];
+ zs.forEach(z=>cells(z).forEach(([c,l])=>{const txt=z.kind==='floor'?z.name:`${z.id}|${c}|${l}`;tmp.innerHTML='';new QRCode(tmp,{text:txt,width:140,height:140,correctLevel:QRCode.CorrectLevel.M});const cv=tmp.querySelector('canvas'),im=tmp.querySelector('img');L.push({src:cv?cv.toDataURL():(im?im.src:''),a:z.name,b:z.kind==='floor'?'Zona de piso':`Columna ${c} · Nivel ${l}`,c:txt});}));
+ tmp.remove();const w=window.open('','_blank');if(!w)return toast('⚠️ Permite las ventanas emergentes para imprimir');
+ w.document.write(`<title>Etiquetas QR</title><style>body{font-family:Segoe UI,Arial;margin:8px}.g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.e{border:1.5px solid #000;border-radius:6px;padding:6px;text-align:center;break-inside:avoid}.e img{width:100%;max-width:140px}.a{font-weight:800;font-size:15px}.b{font-size:12px}.c{font-size:10px;color:#555}</style><div class="g">${L.map(x=>`<div class="e"><img src="${x.src}"><div class="a">${esc(x.a)}</div><div class="b">${esc(x.b)}</div><div class="c">${esc(x.c)}</div></div>`).join('')}</div><script>setTimeout(()=>print(),700)<\/script>`);w.document.close();lyCloseMod();};
+setInterval(async()=>{if(items.length){await load();unplaced();}},6000);
+const _sam=window.supaAddMov;if(typeof _sam==='function')window.supaAddMov=async function(m){const r=await _sam.apply(this,arguments);try{if(m&&m.tipo==='salida')window.lyDeduct(m.sku,+m.cantidad||0,m.id||(m.sku+'|'+(m.fechaObj||'')));}catch(e){}return r;};
+
 // ── Hook ──
 const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='layout')setTimeout(async()=>{await load();rr();},120);};
 })();
@@ -4036,6 +4103,7 @@ const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='layout')s
 </script>
 <script>
 (function(){const f=window.fetch,MSG='👁️ Modo invitado: solo lectura, no se guardó nada';let last=0,blockedAt=0,rl=null;
+setInterval(()=>{try{document.body.classList.toggle('guest',isGuest());}catch(e){}},600);
 const isGuest=()=>{try{return typeof currentUser!=='undefined'&&!!currentUser&&currentUser.rol==='Invitado';}catch(e){return false;}};
 window.fetch=function(u,o){
  let block=false,url='';
@@ -4054,6 +4122,45 @@ if(typeof t0==='function')window.toast=function(m){
  if(isGuest()&&Date.now()-blockedAt<6000&&/^\s*(✅|💾|📥)/.test(String(m))){if(Date.now()-last>1500){last=Date.now();return t0(MSG);}return;}
  return t0.apply(this,arguments);};
 })();
+</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id),BU=['bu1','bu2','bu3','bu4','bu5'],tot=i=>BU.reduce((a,k)=>a+(+i[k]||0),0),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let LT=[],ld=false;
+const load=async()=>{if(ld)return;try{const v=await supaGetConfig('lotes_v1');if(Array.isArray(v))LT=v;ld=true;}catch(e){}};
+const save=async()=>{try{await supaSetConfig('lotes_v1',LT);}catch(e){}};
+const days=d=>Math.ceil((new Date(d+'T00:00:00')-new Date(new Date().toDateString()))/864e5);
+const est=d=>{const n=days(d);return n<0?['🔴 Vencido','#dc2626']:n<=30?['🟠 ≤30 días','#ea580c']:n<=90?['🟡 ≤90 días','#ca8a04']:['🟢 OK','#16a34a'];};
+const an=[...document.querySelectorAll('.sidebar .menu-item')].find(e=>/Alertas/.test(e.textContent));
+const m=document.createElement('div');m.className='menu-item';m.setAttribute('onclick',"showView('lotes',this)");m.innerHTML='📅 Lotes y vencimientos <span id="lt-badge" style="display:none;background:#e0525e;border-radius:10px;padding:0 7px;font-size:.8em;margin-left:4px"></span>';an.parentNode.insertBefore(m,an);
+const v=document.createElement('div');v.className='view';v.id='view-lotes';
+v.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">📅 Lotes y <span>vencimientos</span></div></div>
+<div class="x-grid" id="lt-st"></div>
+<div class="x-card lt-form"><h3>Registrar lote</h3><div class="x-bar" style="margin-top:8px"><input id="lt-s" list="lt-dl" placeholder="SKU" style="min-width:110px"><datalist id="lt-dl"></datalist><input id="lt-l" placeholder="N° de lote" style="width:120px"><input id="lt-d" type="date" title="Vencimiento"><input id="lt-q" type="number" min="1" placeholder="Cant." style="width:85px"><button class="x-btn" onclick="ltAdd()">Agregar lote</button></div><small id="lt-h" style="display:block;margin-top:6px;opacity:.8"></small></div>
+<div class="x-bar"><input id="lt-f" placeholder="🔍 Buscar SKU o lote…" oninput="ltR()"><select id="lt-e" onchange="ltR()"><option value="">Todos</option><option value="v">Vencidos</option><option value="30">Vencen en ≤30 días</option><option value="90">Vencen en ≤90 días</option></select><button class="x-btn alt" onclick="ltXls()">📊 Excel</button></div>
+<div class="x-wrap" id="lt-t"></div></div>`;
+document.querySelector('.views-wrap').appendChild(v);
+const css=document.createElement('style');css.textContent='body.guest .lt-form,body.guest .lt-w,body.guest .ly-w{display:none!important}';document.head.appendChild(css);
+const sw=()=>LT.filter(l=>days(l.venc)<=30).length;
+function badge(){const b=$('lt-badge'),n=sw();if(b){b.style.display=n?'inline-block':'none';b.textContent=n;}}
+window.ltHint=()=>{};
+window.ltAdd=async()=>{const s=$('lt-s').value.trim(),l=$('lt-l').value.trim(),d=$('lt-d').value,q=+$('lt-q').value,i=items.find(a=>String(a.sku)===s);
+ if(!i)return toast('⚠️ Ese SKU no existe en el inventario');if(!l||!d||!(q>0))return toast('⚠️ Completa lote, vencimiento y cantidad');
+ LT.push({id:'l'+Date.now(),sku:i.sku,lote:l,venc:d,qty:q});await save();['lt-l','lt-d','lt-q'].forEach(x=>$(x).value='');toast('✅ Lote registrado');ltR();};
+window.ltDel=async id=>{if(!confirm('¿Eliminar este lote?'))return;LT=LT.filter(x=>x.id!==id);await save();ltR();};
+window.ltQty=async(id,v)=>{const x=LT.find(a=>a.id===id);if(x&&+v>=0){x.qty=+v;await save();ltR();}};
+let view=[];
+window.ltR=async function(){await load();$('lt-dl').innerHTML=items.slice(0,3000).map(i=>`<option value="${esc(i.sku)}">${esc(i.desc1)}</option>`).join('');
+ const q=($('lt-f').value||'').toLowerCase(),f=$('lt-e').value;
+ view=LT.filter(l=>(!q||(l.sku+l.lote).toLowerCase().includes(q))&&(!f||(f==='v'?days(l.venc)<0:days(l.venc)<=+f))).sort((a,b)=>a.venc.localeCompare(b.venc));
+ const c=(fn)=>LT.filter(fn).length;
+ $('lt-st').innerHTML=[['Lotes',LT.length],['🔴 Vencidos',c(l=>days(l.venc)<0)],['🟠 ≤30 días',c(l=>days(l.venc)>=0&&days(l.venc)<=30)],['🟡 ≤90 días',c(l=>days(l.venc)>30&&days(l.venc)<=90)]].map(([a,b])=>`<div class="x-card"><h3>${a}</h3><p>${b}</p></div>`).join('');
+ $('lt-t').innerHTML=`<table class="x-tbl"><tr><th>SKU</th><th>Descripción</th><th>Lote</th><th>Vence</th><th>Días</th><th>Cant.</th><th>Estado</th><th></th></tr>${view.map(l=>{const i=items.find(a=>String(a.sku)===String(l.sku)),[e,col]=est(l.venc),n=days(l.venc);return`<tr><td>${esc(l.sku)}</td><td>${esc(i?i.desc1:'')}</td><td>${esc(l.lote)}</td><td>${l.venc.split('-').reverse().join('/')}</td><td>${n}</td><td><input type="number" min="0" value="${l.qty}" style="width:70px" onchange="ltQty('${l.id}',this.value)"></td><td style="color:${col};font-weight:700">${e}</td><td><button class="lt-w" onclick="ltDel('${l.id}')">✕</button></td></tr>`}).join('')||'<tr><td colspan=8>Sin lotes registrados.</td></tr>'}</table>`;badge();};
+window.ltXls=()=>{if(!view.length)return toast('⚠️ Sin datos');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(view.map(l=>({SKU:l.sku,Lote:l.lote,Vencimiento:l.venc,Días:days(l.venc),Cantidad:l.qty,Estado:est(l.venc)[0]}))),'Lotes');XLSX.writeFile(wb,'lotes_vencimientos.xlsx');};
+const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='lotes')setTimeout(ltR,120);};
+setInterval(async()=>{if(items.length){await load();badge();}},7000);
+})();
+
 </script>
 </body>
 </html>
