@@ -1090,6 +1090,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--t-accent) 12%,transparent)!imp
       <div class="form-group"><label>Rol *</label>
         <select id="u-rol">
           <option value="Admin">Admin</option>
+          <option value="Invitado">Invitado (solo lectura)</option>
           <option value="Supervisor bodega">Supervisor bodega</option>
           <option value="Gerente de Operaciones">Gerente de Operaciones</option>
           <option value="Jefe de produccion">Jefe de produccion</option>
@@ -3542,6 +3543,12 @@ function togglePassVis(){
   const inp=document.getElementById('login-pass');
   inp.type=inp.type==='password'?'text':'password';
 }
+const AUTH_DOM='@sistemalb.app';
+let _rt=null,_rtTimer=null;
+function setAuthSession(t){SUPA_H.Authorization='Bearer '+t.access_token;_rt=t.refresh_token;clearInterval(_rtTimer);_rtTimer=setInterval(refreshAuth,Math.max(120,(t.expires_in||3600)-120)*1000);}
+async function refreshAuth(){try{const r=await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPA_KEY},body:JSON.stringify({refresh_token:_rt})});const t=await r.json();if(r.ok&&t.access_token)setAuthSession(t);else doLogout(true);}catch(e){}}
+async function authSignOut(){try{await fetch(`${SUPA_URL}/auth/v1/logout`,{method:'POST',headers:{apikey:SUPA_KEY,Authorization:SUPA_H.Authorization}});}catch(e){}clearInterval(_rtTimer);_rt=null;SUPA_H.Authorization='Bearer '+SUPA_KEY;}
+async function authSignIn(usuario,pass){const r=await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPA_KEY},body:JSON.stringify({email:usuario+AUTH_DOM,password:pass})});let t={};try{t=await r.json();}catch(e){}return r.ok&&t.access_token?t:null;}
 async function doLogin(){
   const user=document.getElementById('login-user').value.trim().toLowerCase();
   const pass=document.getElementById('login-pass').value;
@@ -3559,24 +3566,15 @@ async function doLogin(){
   const btn=document.querySelector('#login-screen button');
   if(btn){btn.textContent='Verificando…';btn.disabled=true;}
   try{
+    const reset=()=>{if(btn){btn.textContent='Ingresar →';btn.disabled=false;}};
+    const fail=()=>{registrarIntento(user);const a=getAttempts(user),rs=MAX_INTENTOS-a.count;errEl.textContent=rs>0?`Usuario o contraseña incorrectos (${rs} intento${rs!==1?'s':''} restante${rs!==1?'s':''})`:' Cuenta bloqueada por 15 minutos.';errEl.style.display='block';reset();};
+    const ses=await authSignIn(user.split('@')[0],pass);
+    if(!ses){fail();return;}
+    setAuthSession(ses);
     const usuarios=await supaGetUsuarios();
-    const found=usuarios.find(u=>u.usuario.toLowerCase()===user);
-    if(!found){
-      registrarIntento(user);
-      const a=getAttempts(user);
-      const restantes=MAX_INTENTOS-a.count;
-      errEl.textContent=restantes>0?`Usuario o contraseña incorrectos (${restantes} intento${restantes!==1?'s':''} restante${restantes!==1?'s':''})`:' Cuenta bloqueada por 15 minutos.';
-      errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;
-    }
-    if(found.activo===false){errEl.textContent='🚫 Usuario inactivo. Contacta al administrador';errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;}
-    const hash=await hashPass(pass);
-    if(hash!==found.passHash){
-      registrarIntento(user);
-      const a=getAttempts(user);
-      const restantes=MAX_INTENTOS-a.count;
-      errEl.textContent=restantes>0?`Usuario o contraseña incorrectos (${restantes} intento${restantes!==1?'s':''} restante${restantes!==1?'s':''})`:' Cuenta bloqueada por 15 minutos.';
-      errEl.style.display='block';if(btn){btn.textContent='Ingresar →';btn.disabled=false;}return;
-    }
+    const found=usuarios.find(u=>u.usuario.toLowerCase()===user.split('@')[0]);
+    if(!found){await authSignOut();errEl.textContent='🚫 Tu cuenta no tiene perfil en el sistema. Contacta al administrador';errEl.style.display='block';reset();return;}
+    if(found.activo===false){await authSignOut();errEl.textContent='🚫 Usuario inactivo. Contacta al administrador';errEl.style.display='block';reset();return;}
     resetIntentos(user);
     currentUser=found;
     found.ultimoAcceso=new Date().toLocaleString('es-CL');
@@ -3602,6 +3600,7 @@ function doLogout(auto=false){
   if(!auto && !confirm('¿Cerrar sesión?')) return;
   auditLog('LOGOUT', auto?'Sesión expirada por inactividad':'Cierre de sesión manual').catch(()=>{});
   stopSessionWatcher();
+  authSignOut();
   currentUser=null;
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-user').value='';
@@ -3634,7 +3633,7 @@ async function renderUsuarios(){
 function openUserModal(id=null){
   editingUserId=id;
   document.getElementById('usuario-modal-title').textContent=id?'✏️ Editar Usuario':'➕ Nuevo Usuario';
-  document.getElementById('u-pass-group').style.display=id?'none':'flex';
+  document.getElementById('u-pass-group').style.display='none';
   if(id){
     supaGetUsuarios().then(us=>{
       const u=us.find(x=>x.id===id);if(!u)return;
@@ -3662,20 +3661,18 @@ async function saveUsuario(){
     let u=editingUserId?usuarios.find(x=>x.id===editingUserId)||{id:editingUserId}:{id:`usr_${Date.now()}`};
     if(!editingUserId){
       if(usuarios.find(x=>x.usuario.toLowerCase()===usuario)){hideLoading();toast('⚠️ Usuario ya existe');return;}
-      const pass=document.getElementById('u-pass').value;
-      if(!pass||pass.length<6){hideLoading();toast('⚠️ Contraseña mínimo 6 caracteres');return;}
-      u.passHash=await hashPass(pass);
     }
     u.nombre=nombre;u.usuario=usuario;
     u.email=document.getElementById('u-email').value.trim();
     u.rol=document.getElementById('u-rol').value;
     u.activo=document.getElementById('u-activo').value==='true';
     await supaUpsertUsuario(u);
-    hideLoading();toast(editingUserId?'✅ Usuario actualizado':'✅ Usuario creado');
+    hideLoading();toast(editingUserId?'✅ Usuario actualizado':'✅ Perfil creado. Falta crear su acceso en Supabase → Authentication con el correo '+usuario+AUTH_DOM);
     closeUserModal();renderUsuarios();
   }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
 }
 function openResetPass(id){
+  toast('🔑 Para resetear: Supabase → Authentication → Users → el usuario → Send password recovery / cambiar contraseña');return;
   resetUserId=id;
   supaGetUsuarios().then(us=>{
     const u=us.find(x=>x.id===id);
@@ -3717,11 +3714,11 @@ async function guardarMiPass(){
   if(!actual||!nueva||!conf){toast('⚠️ Completa todos los campos');return;}
   if(nueva!==conf){toast('⚠️ Las contraseñas no coinciden');return;}
   if(nueva.length<6){toast('⚠️ Mínimo 6 caracteres');return;}
-  if(await hashPass(actual)!==currentUser.passHash){toast('❌ Contraseña actual incorrecta');return;}
+  if(!(await authSignIn(currentUser.usuario.toLowerCase(),actual))){toast('❌ Contraseña actual incorrecta');return;}
   showLoading('Guardando…');
   try{
-    currentUser.passHash=await hashPass(nueva);
-    await supaUpsertUsuario(currentUser);
+    const rr=await fetch(`${SUPA_URL}/auth/v1/user`,{method:'PUT',headers:{'Content-Type':'application/json',apikey:SUPA_KEY,Authorization:SUPA_H.Authorization},body:JSON.stringify({password:nueva})});
+    if(!rr.ok){const j=await rr.json().catch(()=>({}));hideLoading();toast('⚠️ '+(j.msg||j.message||'No se pudo cambiar la contraseña'));return;}
     hideLoading();toast('✅ Contraseña actualizada');
     document.getElementById('modal-mi-pass').classList.remove('open');
   }catch(e){hideLoading();toast('⚠️ Error: '+e.message);}
@@ -4036,6 +4033,14 @@ window.lyClear=()=>{delete LY.loc[key(...cur)];save();edit();};
 const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='layout')setTimeout(async()=>{await load();rr();},120);};
 })();
 
+</script>
+<script>
+(function(){const f=window.fetch;let last=0;
+window.fetch=function(u,o){try{const m=((o&&o.method)||'GET').toUpperCase(),url=String(u);
+ if(m!=='GET'&&url.includes('/rest/v1/')&&typeof currentUser!=='undefined'&&currentUser&&currentUser.rol==='Invitado'){
+  if(!/\/rest\/v1\/(usuarios|config)/.test(url)&&Date.now()-last>2500){last=Date.now();toast('👁️ Modo invitado: solo lectura, no se guardó nada');}
+  return Promise.resolve(new Response('{"message":"solo lectura"}',{status:403,headers:{'Content-Type':'application/json'}}));}}catch(e){}
+ return f.apply(this,arguments);};})();
 </script>
 </body>
 </html>
