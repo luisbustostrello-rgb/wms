@@ -4035,15 +4035,25 @@ const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='layout')s
 
 </script>
 <script>
-(function(){const f=window.fetch;let last=0;
+(function(){const f=window.fetch,MSG='👁️ Modo invitado: solo lectura, no se guardó nada';let last=0,blockedAt=0,rl=null;
+const isGuest=()=>{try{return typeof currentUser!=='undefined'&&!!currentUser&&currentUser.rol==='Invitado';}catch(e){return false;}};
 window.fetch=function(u,o){
  let block=false,url='';
  try{const m=((o&&o.method)||'GET').toUpperCase();url=String((u&&u.url)||u);
-  block=m!=='GET'&&m!=='HEAD'&&url.indexOf('/rest/v1/')>-1&&typeof currentUser!=='undefined'&&!!currentUser&&currentUser.rol==='Invitado';}catch(e){}
+  block=m!=='GET'&&m!=='HEAD'&&url.indexOf('/rest/v1/')>-1&&isGuest();}catch(e){}
  if(block){
-  try{if(url.indexOf('/rest/v1/usuarios')<0&&url.indexOf('/rest/v1/config')<0&&Date.now()-last>2500){last=Date.now();toast('👁️ Modo invitado: solo lectura, no se guardó nada');}}catch(e){}
+  if(url.indexOf('/rest/v1/usuarios')<0&&url.indexOf('/rest/v1/config')<0){
+   blockedAt=Date.now();
+   clearTimeout(rl);rl=setTimeout(()=>{try{loadAppData();}catch(e){}},1500); // revierte lo que se vio en pantalla
+  }
   return Promise.resolve(new Response('{"message":"solo lectura"}',{status:403,headers:{'Content-Type':'application/json'}}));}
- return f.apply(this,arguments);};})();
+ return f.apply(this,arguments);};
+// El invitado nunca ve mensajes de éxito falsos
+const t0=window.toast;
+if(typeof t0==='function')window.toast=function(m){
+ if(isGuest()&&Date.now()-blockedAt<6000&&/^\s*(✅|💾|📥)/.test(String(m))){if(Date.now()-last>1500){last=Date.now();return t0(MSG);}return;}
+ return t0.apply(this,arguments);};
+})();
 </script>
 </body>
 </html>
