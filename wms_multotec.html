@@ -4036,10 +4036,13 @@ const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='layout')s
 </script>
 <script>
 (function(){const f=window.fetch;let last=0;
-window.fetch=function(u,o){try{const m=((o&&o.method)||'GET').toUpperCase(),url=String(u);
- if(m!=='GET'&&url.includes('/rest/v1/')&&typeof currentUser!=='undefined'&&currentUser&&currentUser.rol==='Invitado'){
-  if(!/\/rest\/v1\/(usuarios|config)/.test(url)&&Date.now()-last>2500){last=Date.now();toast('👁️ Modo invitado: solo lectura, no se guardó nada');}
-  return Promise.resolve(new Response('{"message":"solo lectura"}',{status:403,headers:{'Content-Type':'application/json'}}));}}catch(e){}
+window.fetch=function(u,o){
+ let block=false,url='';
+ try{const m=((o&&o.method)||'GET').toUpperCase();url=String((u&&u.url)||u);
+  block=m!=='GET'&&m!=='HEAD'&&url.indexOf('/rest/v1/')>-1&&typeof currentUser!=='undefined'&&!!currentUser&&currentUser.rol==='Invitado';}catch(e){}
+ if(block){
+  try{if(url.indexOf('/rest/v1/usuarios')<0&&url.indexOf('/rest/v1/config')<0&&Date.now()-last>2500){last=Date.now();toast('👁️ Modo invitado: solo lectura, no se guardó nada');}}catch(e){}
+  return Promise.resolve(new Response('{"message":"solo lectura"}',{status:403,headers:{'Content-Type':'application/json'}}));}
  return f.apply(this,arguments);};})();
 </script>
 </body>
