@@ -3899,7 +3899,7 @@ mk('alertas','🚨 Alertas de <span>stock</span>',`<div class="x-bar"><input id=
 // Bodegas
 mk('bodegas','🏢 <span>Bodegas</span>',`<div class="x-grid" id="bo-g"></div><div class="x-wrap" id="bo-t"></div>`);
 // Informes
-mk('informes','📈 <span>Informes</span>',`<div class="x-bar"><select id="in-t" onchange="xRep()"><option value="val">Valorización por categoría</option><option value="bod">Stock por bodega</option><option value="mov">Movimientos por fecha</option><option value="top">Top SKUs más movidos</option><option value="sin">SKUs sin movimiento</option><option value="neg">Stock cero o bajo mínimo</option></select><input type="date" id="in-d1" onchange="xRep()"><input type="date" id="in-d2" onchange="xRep()"><button class="x-btn" onclick="xXls()">📊 Excel</button><button class="x-btn alt" onclick="xPdf()">📄 PDF / Imprimir</button></div><div class="x-wrap" id="in-r"></div>`);
+mk('informes','📈 <span>Informes</span>',`<div class="x-bar"><select id="in-t" onchange="xRep()"><option value="val">Valorización por categoría</option><option value="ubi">Ubicaciones por SKU</option><option value="bod">Stock por bodega</option><option value="mov">Movimientos por fecha</option><option value="top">Top SKUs más movidos</option><option value="sin">SKUs sin movimiento</option><option value="neg">Stock cero o bajo mínimo</option></select><input type="date" id="in-d1" onchange="xRep()"><input type="date" id="in-d2" onchange="xRep()"><button class="x-btn" onclick="xXls()">📊 Excel</button><button class="x-btn alt" onclick="xPdf()">📄 PDF / Imprimir</button></div><div class="x-wrap" id="in-r"></div>`);
 // Conteo
 mk('conteo','🧮 Conteo <span>físico</span>',`<div class="x-bar"><select id="ct-b">${BU.map(b=>`<option>${b.toUpperCase()}</option>`).join('')}</select><input id="ct-s" placeholder="SKU" list="ct-dl"><datalist id="ct-dl"></datalist><input id="ct-q" type="number" min="0" placeholder="Cantidad contada"><button class="x-btn" onclick="xCtAdd()">Agregar</button><button class="x-btn alt" onclick="xCtApply()">✅ Aplicar ajustes</button></div><div class="x-wrap" id="ct-t"></div>`);
 // Respaldo
@@ -3921,6 +3921,7 @@ window.xBod=function(sel){const st=BU.map(b=>({b,s:items.filter(i=>+i[b]>0).leng
 window.xRep=async function(){await loadMin();const t=$('in-t').value,d1=$('in-d1').value,d2=$('in-d2').value;let c,r,ti;
  const inR=m=>{const f=(m.fechaObj||'').slice(0,10);return(!d1||f>=d1)&&(!d2||f<=d2);};
  if(t==='val'){ti='Valorización por categoría';const g={};items.forEach(i=>{const k=i.categoria||'SIN CATEGORÍA';g[k]=g[k]||{Categoría:k,SKUs:0,Unidades:0,Valor:0};g[k].SKUs++;g[k].Unidades+=tot(i);g[k].Valor+=Math.round(tot(i)*(i.pUni||0));});r=Object.values(g).sort((a,b)=>b.Valor-a.Valor);}
+ else if(t==='ubi'){ti='Ubicaciones por SKU';r=window.lyReportRows?await window.lyReportRows():[];}
  else if(t==='bod'){ti='Stock por bodega';r=items.filter(i=>tot(i)>0).map(i=>({SKU:i.sku,Descripción:i.desc1,BU1:i.bu1||0,BU2:i.bu2||0,BU3:i.bu3||0,BU4:i.bu4||0,BU5:i.bu5||0,Total:tot(i)}));}
  else if(t==='mov'){ti='Movimientos';r=movimientos.filter(inR).map(m=>({Fecha:m.fecha,Tipo:m.tipo,SKU:m.sku,Descripción:m.desc1,Bodega:m.bodega,Cantidad:m.cantidad,Total:Math.round(m.total||0),Motivo:m.motivo||''}));}
  else if(t==='top'){ti='Top SKUs más movidos';const g={};movimientos.filter(inR).forEach(m=>{g[m.sku]=g[m.sku]||{SKU:m.sku,Descripción:m.desc1,Movimientos:0,Unidades:0};g[m.sku].Movimientos++;g[m.sku].Unidades+=Math.abs(m.cantidad||0);});r=Object.values(g).sort((a,b)=>b.Movimientos-a.Movimientos).slice(0,50);}
@@ -3943,7 +3944,7 @@ window.xCtApply=async function(){const d=CONT.filter(c=>c.q!==(+items.find(x=>St
   await supaAddMov(m);movimientos.unshift(m);}
  CONT=[];_invCache=null;xCt();toast('✅ Ajustes aplicados');};
 // ── Respaldo ──
-window.xBackup=function(f){const D={fecha:new Date().toISOString(),inventario:items,movimientos,traspasos,despachos:typeof despachos!=='undefined'?despachos:[],proveedores:typeof proveedores!=='undefined'?proveedores:[]},st=new Date().toISOString().slice(0,10);
+window.xBackup=function(f){const D={fecha:new Date().toISOString(),layout:window.lyData?window.lyData():null,inventario:items,movimientos,traspasos,despachos:typeof despachos!=='undefined'?despachos:[],proveedores:typeof proveedores!=='undefined'?proveedores:[]},st=new Date().toISOString().slice(0,10);
  if(f==='json'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D)],{type:'application/json'}));a.download=`respaldo_LB_${st}.json`;a.click();}
  else{const wb=XLSX.utils.book_new();['inventario','movimientos','traspasos','despachos','proveedores'].forEach(k=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet((D[k]||[]).map(o=>Object.fromEntries(Object.entries(o).map(([a,b])=>[a,typeof b==='object'?JSON.stringify(b):b])))),k));XLSX.writeFile(wb,`respaldo_LB_${st}.xlsx`);}
  localStorage.setItem('wms_last_backup',Date.now());$('bk-last').textContent='Último respaldo: ahora';};
@@ -3958,11 +3959,18 @@ setInterval(()=>{if(currentUser&&Date.now()-(+localStorage.getItem('wms_last_bac
 (function(){
 const $=id=>document.getElementById(id),BU=['bu1','bu2','bu3','bu4','bu5'];
 const tot=i=>BU.reduce((a,k)=>a+(+i[k]||0),0),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const def=()=>({z:[{id:'A',name:'RACK A',kind:'rack',cols:20,lvls:4},{id:'B',name:'RACK B',kind:'rack',cols:20,lvls:4},{id:'PIEZA',name:'PIEZA',kind:'floor'},{id:'FONDO1',name:'FONDO 1',kind:'floor'},{id:'FMAT',name:'FONDO MATRICES',kind:'floor'}],loc:{}});
+const def=()=>({z:[{id:'A',name:'RACK A',kind:'rack',cols:20,lvls:4,pre:'RA'},{id:'B',name:'RACK B',kind:'rack',cols:20,lvls:4,pre:'RB'},{id:'PIEZA',name:'PIEZA',kind:'floor',pre:'PIEZA'},{id:'FONDO1',name:'FONDO 1',kind:'floor',pre:'FONDO1'},{id:'FMAT',name:'FONDO MATRICES',kind:'floor',pre:'FONDOMATRICES'}],loc:{}});
 let LY=def(),loaded=false,mode='3d',rx=-22,ry=-28,zm=.7,hl=new Set(),tm=null,cur=null;
 const key=(z,c,l)=>`${z}|${c}|${l}`,cells=z=>z.kind==='floor'?[[1,1]]:Array.from({length:z.cols*z.lvls},(_,n)=>[Math.floor(n/z.lvls)+1,n%z.lvls+1]);
 const get=(z,c,l)=>LY.loc[key(z,c,l)]||[],full=(z,c,l)=>get(z,c,l).length>0;
-async function load(){if(loaded)return;try{const v=await supaGetConfig('layout_v1');if(v&&v.z)LY=v;loaded=true;}catch(e){}}
+const p2=n=>String(n).padStart(2,'0'),clean=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const code=(z,c,l)=>z.kind==='floor'?z.pre:`${z.pre}-C${p2(c)}-P${p2(l)}`;
+function norm(){const d={A:'RA',B:'RB'};LY.z.forEach(z=>{if(!z.pre)z.pre=d[z.id]||(z.kind==='rack'?'R'+clean(z.name).slice(-1):clean(z.name))||z.id;});}
+function resolve(txt){const t=String(txt||'').trim().toUpperCase();let m=t.match(/^([A-Z0-9]+)-C(\d+)-P(\d+)$/),z;
+ if(m){z=LY.z.find(x=>x.pre===m[1]&&x.kind==='rack');if(z&&+m[2]>=1&&+m[2]<=z.cols&&+m[3]>=1&&+m[3]<=z.lvls)return{z,c:+m[2],l:+m[3]};return null;}
+ m=t.match(/^(.+?)[|:;](\d+)[|:;](\d+)$/);if(m){z=LY.z.find(x=>x.kind==='rack'&&(x.id.toUpperCase()===m[1]||x.pre===m[1]||x.name.toUpperCase()===m[1]));if(z&&+m[2]<=z.cols&&+m[3]<=z.lvls)return{z,c:+m[2],l:+m[3]};return null;}
+ z=LY.z.find(x=>x.kind==='floor'&&(x.pre===t||x.name.toUpperCase()===t||x.id.toUpperCase()===t));return z?{z,c:1,l:1}:null;}
+async function load(){if(loaded)return;try{const v=await supaGetConfig('layout_v1');if(v&&v.z)LY=v;norm();loaded=true;}catch(e){}}
 function save(){clearTimeout(tm);tm=setTimeout(async()=>{try{await supaSetConfig('layout_v1',LY);}catch(e){toast('⚠️ No se pudo guardar el layout');}},500);}
 const assigned=s=>Object.values(LY.loc).flat().reduce((a,x)=>a+(x.sku===s?+x.qty:0),0);
 // ── Vista y menú ──
@@ -3971,7 +3979,8 @@ const m=document.createElement('div');m.className='menu-item';m.setAttribute('on
 const v=document.createElement('div');v.className='view';v.id='view-layout';
 v.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">🧱 Layout de <span>Racks</span></div></div>
 <div class="x-grid" id="ly-st"></div>
-<div class="x-bar"><button class="x-btn" id="ly-b3" onclick="lyMode('3d')">🧊 Vista 3D</button><button class="x-btn alt" id="ly-b2" onclick="lyMode('2d')">🟩 Plano 2D</button><input id="ly-q" placeholder="🔍 Buscar código en el layout…" oninput="lyFind()" style="min-width:210px"><button class="x-btn" onclick="lyScanLoc()">📷 Escanear ubicación</button><button class="x-btn alt" onclick="lyLabels()">🖨️ Etiquetas QR</button><button class="x-btn alt" onclick="lyAddZone('rack')">➕ Nuevo rack</button><button class="x-btn alt" onclick="lyAddZone('floor')">➕ Zona de piso</button></div>
+<div class="x-bar"><button class="x-btn" id="ly-b3" onclick="lyMode('3d')">🧊 Vista 3D</button><button class="x-btn alt" id="ly-b2" onclick="lyMode('2d')">🟩 Plano 2D</button><input id="ly-q" placeholder="🔍 Buscar código en el layout…" oninput="lyFind()" style="min-width:210px"><input id="ly-go" placeholder="Ir a ubicación: RB-C04-P01" onkeydown="if(event.key==='Enter')lyGo()" style="min-width:210px"><button class="x-btn" onclick="lyScanLoc()">📷 Escanear ubicación</button><button class="x-btn alt" onclick="lyLabels()">🖨️ Etiquetas QR</button><button class="x-btn alt" onclick="lyAddZone('rack')">➕ Nuevo rack</button><button class="x-btn alt" onclick="lyAddZone('floor')">➕ Zona de piso</button></div>
+<div class="x-card" id="ly-fr" style="display:none"></div>
 <div id="ly-3d"><div class="x-bar"><button class="x-btn alt" onclick="lyZoom(.1)">＋</button><button class="x-btn alt" onclick="lyZoom(-.1)">－</button><button class="x-btn alt" onclick="lyRot(-22,-28)">⟲ Reiniciar</button><button class="x-btn alt" onclick="lyRot(-8,0)">Frente</button><button class="x-btn alt" onclick="lyRot(-80,0)">Planta</button><small style="color:var(--t-text);opacity:.7">Arrastra para girar · toca una ubicación para editarla</small></div><div id="ly-sc"><div id="ly-w"></div></div></div>
 <div id="ly-2d" style="display:none"></div>
 <div class="x-card" id="ly-un"></div>
@@ -3992,7 +4001,7 @@ function r3(){let h='',zc=0;const dp=z=>z.kind==='floor'?110:P,tt=LY.z.reduce((a
  LY.z.forEach(z=>{const d=dp(z),zz=zc+d/2;zc+=d+46;
   if(z.kind==='floor'){const c=colr(z.id,1,1),tl=get(z.id,1,1).map(x=>x.sku).slice(0,3).join(' ');h+=`<div class="ly-o ly-c" onclick="lyClick('${z.id}',1,1)" style="transform:translate3d(0,-8px,${zz}px)">${cube(220,16,d,c,esc(z.name)+(tl?'<br>'+esc(tl):''))}</div>`;}
   else{const bw=z.cols*P;h+=`<div class="ly-o" style="transform:translate3d(0,-3px,${zz}px)">${cube(bw+10,6,P+6,'#2a3a3a',esc(z.name))}</div>`;
-   cells(z).forEach(([c,l])=>{const x=(c-1-(z.cols-1)/2)*P,y=-(l-.5)*P-6;h+=`<div class="ly-o ly-c" title="${esc(z.name)} C${c} N${l}: ${esc(get(z.id,c,l).map(a=>a.sku+' ×'+a.qty).join(', ')||'vacía')}" onclick="lyClick('${z.id}',${c},${l})" style="transform:translate3d(${x}px,${y}px,${zz}px)">${cube(S,S,S,colr(z.id,c,l))}</div>`;});}});
+   cells(z).forEach(([c,l])=>{const x=(c-1-(z.cols-1)/2)*P,y=-(l-.5)*P-6;h+=`<div class="ly-o ly-c" title="${esc(code(z,c,l))}: ${esc(get(z.id,c,l).map(a=>a.sku+' ×'+a.qty).join(', ')||'vacía')}" onclick="lyClick('${z.id}',${c},${l})" style="transform:translate3d(${x}px,${y}px,${zz}px)">${cube(S,S,S,colr(z.id,c,l))}</div>`;});}});
  $('ly-w').innerHTML=h;ap();}
 function ap(){$('ly-w').style.transform=`rotateX(${rx}deg) rotateY(${ry}deg) scale(${zm})`;}
 window.lyZoom=d=>{zm=Math.min(1.6,Math.max(.25,zm+d));ap();};window.lyRot=(a,b)=>{rx=a;ry=b;ap();};
@@ -4005,21 +4014,26 @@ window.lyClick=(z,c,l)=>{if(moved)return;lyOpen(z,c,l);};
 // ── 2D ──
 function r2(){$('ly-2d').innerHTML=LY.z.map(z=>{const s=zs(z);let g='';
  if(z.kind==='floor')g=`<div class="ly2" style="width:150px;background:${full(z.id,1,1)?'#22c55e':'#ef4444'}" onclick="lyOpen('${z.id}',1,1)">${get(z.id,1,1).length} código(s)</div>`;
- else for(let l=z.lvls;l>=1;l--){g+=`<div style="white-space:nowrap"><span style="display:inline-block;width:18px;font-size:10px">${l}</span>`;for(let c=1;c<=z.cols;c++)g+=`<div class="ly2" style="background:${colr(z.id,c,l)}" title="C${c} N${l}" onclick="lyOpen('${z.id}',${c},${l})">${c}</div>`;g+='</div>';}
+ else for(let l=z.lvls;l>=1;l--){g+=`<div style="white-space:nowrap"><span style="display:inline-block;width:18px;font-size:10px">${l}</span>`;for(let c=1;c<=z.cols;c++)g+=`<div class="ly2" style="background:${colr(z.id,c,l)}" title="${esc(code(z,c,l))}" onclick="lyOpen('${z.id}',${c},${l})">${c}</div>`;g+='</div>';}
  return`<div class="x-card" style="margin-bottom:12px"><h3>${esc(z.name)} · ${s.f}/${s.t} llenas (${s.p}%)</h3><div class="ly-pb"><i style="width:${s.p}%"></i></div><div style="overflow-x:auto;margin-top:10px">${g}</div></div>`;}).join('');}
 // ── Estadísticas y admin ──
 function zs(z){const cs=cells(z),f=cs.filter(([c,l])=>full(z.id,c,l)).length;return{t:cs.length,f,e:cs.length-f,p:cs.length?Math.round(f*100/cs.length):0};}
 function stats(){const a=LY.z.map(zs),T=a.reduce((x,y)=>x+y.t,0),F=a.reduce((x,y)=>x+y.f,0),p=T?Math.round(F*100/T):0;
  $('ly-st').innerHTML=`<div class="x-card"><h3>Ocupación total</h3><p>${p}%</p><div class="ly-pb"><i style="width:${p}%"></i></div></div><div class="x-card"><h3>🟩 Llenas</h3><p>${F}</p></div><div class="x-card"><h3>🟥 Vacías</h3><p>${T-F}</p></div><div class="x-card"><h3>Total ubicaciones</h3><p>${T}</p></div>`+LY.z.map((z,i)=>`<div class="x-card"><h3>${esc(z.name)}</h3><p>${a[i].p}%</p><small>${a[i].f} llenas · ${a[i].e} vacías</small></div>`).join('');
- $('ly-ad').innerHTML='<h3>⚙️ Administrar líneas de rack</h3>'+LY.z.map(z=>`<div class="x-bar" style="margin-top:8px"><b style="min-width:130px">${esc(z.name)}${z.kind==='rack'?` <small>(${z.cols}×${z.lvls})</small>`:' <small>(piso)</small>'}</b>${z.kind==='rack'?`<button class="x-btn alt" onclick="lyDim('${z.id}','cols',1)">＋Columna</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',1)">＋Nivel ↑</button><button class="x-btn alt" onclick="lyDim('${z.id}','cols',-1)">－Col</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',-1)">－Nivel</button>`:''}<button class="x-btn alt" onclick="lyRen('${z.id}')">✏️</button><button class="x-btn alt" onclick="lyDel('${z.id}')">🗑</button></div>`).join('');}
+ $('ly-ad').innerHTML='<h3>⚙️ Administrar líneas de rack</h3>'+LY.z.map(z=>`<div class="x-bar" style="margin-top:8px"><b style="min-width:130px">${esc(z.name)}${z.kind==='rack'?` <small>(${z.cols}×${z.lvls})</small>`:' <small>(piso)</small>'}</b>${z.kind==='rack'?`<button class="x-btn alt" onclick="lyDim('${z.id}','cols',1)">＋Columna</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',1)">＋Nivel ↑</button><button class="x-btn alt" onclick="lyDim('${z.id}','cols',-1)">－Col</button><button class="x-btn alt" onclick="lyDim('${z.id}','lvls',-1)">－Nivel</button>`:''}<button class="x-btn alt" onclick="lyPre('${z.id}')">🏷️ ${esc(z.pre||'')}</button><button class="x-btn alt" onclick="lyRen('${z.id}')">✏️</button><button class="x-btn alt" onclick="lyDel('${z.id}')">🗑</button></div>`).join('');}
 function rr(){stats();unplaced();if(mode==='3d')r3();else r2();}
 window.lyMode=md2=>{mode=md2;$('ly-3d').style.display=md2==='3d'?'':'none';$('ly-2d').style.display=md2==='2d'?'':'none';$('ly-b3').className='x-btn'+(md2==='3d'?'':' alt');$('ly-b2').className='x-btn'+(md2==='2d'?'':' alt');rr();};
-window.lyFind=()=>{const q=$('ly-q').value.trim().toLowerCase();hl=new Set();if(q)Object.values(LY.loc).flat().forEach(x=>{if(String(x.sku).toLowerCase().includes(q))hl.add(String(x.sku));});rr();};
-window.lyAddZone=k=>{const n=prompt('Nombre de la '+(k==='rack'?'línea de rack':'zona de piso')+':');if(!n)return;const z={id:'Z'+Date.now(),name:n.toUpperCase(),kind:k};
+window.lyFind=()=>{const q=$('ly-q').value.trim().toLowerCase();hl=new Set();const rows=[];
+ if(q)Object.entries(LY.loc).forEach(([k,arr])=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);if(!z)return;arr.forEach(x=>{if(String(x.sku).toLowerCase().includes(q)){hl.add(String(x.sku));rows.push([code(z,+c,+l),x.sku,x.qty,zid,+c,+l]);}});});
+ const el=$('ly-fr');el.style.display=q?'block':'none';
+ el.innerHTML=q?`<h3>📍 Dónde está “${esc(q)}”</h3>`+(rows.length?rows.sort().slice(0,60).map(r=>`<div class="x-bar" style="margin-top:6px"><b style="min-width:130px">${esc(r[0])}</b><span style="flex:1">${esc(r[1])} · ${r[2]} un.</span><button class="x-btn alt" onclick="lyOpen('${r[3]}',${r[4]},${r[5]})">Abrir</button></div>`).join(''):'<p style="margin-top:6px">No está ubicado en ninguna posición.</p>'):'';
+ rr();};
+window.lyAddZone=k=>{const n=prompt('Nombre de la '+(k==='rack'?'línea de rack':'zona de piso')+':');if(!n)return;const pre=clean(prompt('Código para las ubicaciones (ej. RC → RC-C01-P01):',k==='rack'?'R'+clean(n).slice(-1):clean(n)));if(!pre)return;if(LY.z.some(x=>x.pre===pre))return toast('⚠️ Ese código ya existe');const z={id:'Z'+Date.now(),name:n.toUpperCase(),kind:k,pre};
  if(k==='rack'){const c=+prompt('¿Cuántas columnas?','10'),l=+prompt('¿Cuántos niveles (pisos)?','4');if(!(c>0&&l>0))return;z.cols=c;z.lvls=l;}LY.z.push(z);save();rr();};
 window.lyDim=(id,k,d)=>{const z=LY.z.find(x=>x.id===id),n=z[k]+d;if(n<1)return;
  if(d<0){const used=cells(z).some(([c,l])=>(k==='cols'?c===z.cols:l===z.lvls)&&full(id,c,l));if(used)return toast('⚠️ Vacía primero esa ubicación');}
  z[k]=n;save();rr();};
+window.lyPre=id=>{const z=LY.z.find(x=>x.id===id),n=clean(prompt('Código de la zona (ej. RB → RB-C04-P01).\nOjo: si cambias el código hay que reimprimir las etiquetas.',z.pre));if(!n||n===z.pre)return;if(LY.z.some(x=>x.pre===n))return toast('⚠️ Ese código ya existe');z.pre=n;save();rr();};
 window.lyRen=id=>{const z=LY.z.find(x=>x.id===id),n=prompt('Nuevo nombre:',z.name);if(n){z.name=n.toUpperCase();save();rr();}};
 window.lyDel=id=>{if(!confirm('¿Eliminar esta zona y sus códigos asignados?'))return;LY.z=LY.z.filter(x=>x.id!==id);Object.keys(LY.loc).forEach(k=>{if(k.startsWith(id+'|'))delete LY.loc[k];});save();rr();};
 // ── Cámara / escáner ──
@@ -4039,16 +4053,14 @@ window.lyScan=async function(cb,title){scanCb=cb;lastC='';$('ly-ct').textContent
   try{navigator.vibrate&&navigator.vibrate(60);}catch(e){}
   const keep=scanCb&&scanCb(txt);$('ly-last').textContent='✔ '+txt;if(!keep)lyCamStop();},250);};
 const findSku=t=>items.find(a=>String(a.sku)===t)||items.find(a=>String(a.sku).toLowerCase()===t.toLowerCase())||items.find(a=>t.includes('/')||t.includes('|')?false:String(a.sku).toLowerCase().includes(t.toLowerCase())&&t.length>=4);
-window.lyScanLoc=()=>lyScan(t=>{const m=t.match(/^(.+?)[|:;-](\d+)[|:;-](\d+)$/),zn=LY.z.find(z=>z.id.toLowerCase()===(m?m[1]:t).toLowerCase()||z.name.toLowerCase()===(m?m[1]:t).toLowerCase());
- if(!zn){toast('⚠️ Ubicación no reconocida: '+t);return true;}
- if(zn.kind==='rack'&&m&&+m[2]<=zn.cols&&+m[3]<=zn.lvls){lyCamStop();lyOpen(zn.id,+m[2],+m[3]);return false;}
- if(zn.kind==='floor'){lyCamStop();lyOpen(zn.id,1,1);return false;}toast('⚠️ Columna/nivel fuera del rack');return true;},'Escanea el QR de la ubicación (ej. A|3|2)');
+window.lyScanLoc=()=>lyScan(t=>{const r=resolve(t);if(!r){toast('⚠️ Ubicación no reconocida: '+t);return true;}lyCamStop();lyOpen(r.z.id,r.c,r.l);return false;},'Escanea el QR de la ubicación (ej. RB-C04-P01)');
+window.lyGo=()=>{const r=resolve($('ly-go').value);if(!r)return toast('⚠️ Ubicación no válida. Formato: RB-C04-P01');lyOpen(r.z.id,r.c,r.l);};
 // ── Editor de ubicación ──
 let fast=false;
 const closeMod=()=>{$('ly-mod').style.display='none';rr();};md.onclick=e=>{if(e.target===md)closeMod();};
 window.lyOpen=(z,c,l)=>{cur=[z,c,l];edit();$('ly-mod').style.display='flex';};
 function edit(){const[z,c,l]=cur,zn=LY.z.find(x=>x.id===z),ls=get(z,c,l),av=items.filter(i=>tot(i)>0).slice(0,3000),tu=ls.reduce((a,x)=>a+(+x.qty||0),0);
- $('ly-mb').innerHTML=`<h3>${esc(zn.name)}${zn.kind==='rack'?` · Columna ${c} · Nivel ${l}`:''}</h3><p style="font-size:.82em;opacity:.8;margin:4px 0 10px">${ls.length?`🟩 Llena · ${ls.length} código(s) · ${tu} un.`:'🟥 Vacía'}</p>
+ $('ly-mb').innerHTML=`<h3>${esc(code(zn,c,l))} <small style="opacity:.7;font-weight:400">${esc(zn.name)}${zn.kind==='rack'?` · Col ${c} · Nivel ${l}`:''}</small></h3><p style="font-size:.82em;opacity:.8;margin:4px 0 10px">${ls.length?`🟩 Llena · ${ls.length} código(s) · ${tu} un.`:'🟥 Vacía'}</p>
  ${ls.map((x,n)=>{const i=items.find(a=>String(a.sku)===String(x.sku));return`<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;margin-bottom:6px"><div style="display:flex;gap:8px;align-items:center"><div style="flex:1"><b>${esc(x.sku)}</b><br><small style="opacity:.75">${esc(i?i.desc1:'(no está en inventario)')}${i?' · stock '+tot(i):''}</small></div><button class="x-btn alt" onclick="lyRm(${n})">✕</button></div>
  <div style="display:flex;gap:6px;align-items:center;margin-top:6px"><small>Cantidad</small><button class="x-btn alt" onclick="lyStep(${n},-1)">−</button><input type="number" min="1" id="lq${n}" value="${x.qty}" style="width:80px;text-align:center;padding:7px;border-radius:8px;border:1px solid #cde" oninput="lyQty(${n},this.value)"><button class="x-btn alt" onclick="lyStep(${n},1)">＋</button></div></div>`}).join('')}
  <div class="x-bar" style="margin-top:10px"><input id="ly-s" list="ly-dl" placeholder="Código SKU" style="flex:1;min-width:120px" oninput="lyHint()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ly-n').focus();}"><datalist id="ly-dl">${av.map(i=>`<option value="${esc(i.sku)}">${esc(i.desc1)}</option>`).join('')}</datalist><button class="x-btn alt" onclick="lyScanSku()">📷</button><input id="ly-n" type="number" min="1" placeholder="Cant." style="width:75px" onkeydown="if(event.key==='Enter'){event.preventDefault();lyAdd();}"><button class="x-btn" onclick="lyAdd()">Agregar</button></div>
@@ -4068,6 +4080,8 @@ window.lyStep=(n,d)=>{const x=LY.loc[key(...cur)][n];x.qty=Math.max(1,(+x.qty||1
 window.lyRm=n=>{const k=key(...cur);LY.loc[k].splice(n,1);if(!LY.loc[k].length)delete LY.loc[k];save();edit();};
 window.lyClear=()=>{delete LY.loc[key(...cur)];save();edit();};
 window.lyCloseMod=()=>closeMod();
+window.lyData=()=>LY;
+window.lyReportRows=async()=>{await load();const R=[];Object.entries(LY.loc).forEach(([k,a])=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);if(!z)return;a.forEach(x=>{const i=items.find(t=>String(t.sku)===String(x.sku));R.push({Ubicación:code(z,+c,+l),Zona:z.name,SKU:x.sku,Descripción:i?i.desc1:'',Cantidad:x.qty});});});return R.sort((a,b)=>a.Ubicación.localeCompare(b.Ubicación));};
 // ── Auto-descuento por salidas ──
 window.lyDeduct=async function(sku,qty,id){await load();LY.done=LY.done||[];if(id&&LY.done.includes(id))return;if(id)LY.done.push(id);if(LY.done.length>400)LY.done.shift();
  let rem=+qty||0;const ks=Object.keys(LY.loc).filter(k=>LY.loc[k].some(x=>String(x.sku)===String(sku)));
@@ -4090,9 +4104,9 @@ let qrP=null;const qrLib=()=>qrP||(qrP=new Promise(r=>{if(window.QRCode)return r
 window.lyLabels=()=>{$('ly-mb').innerHTML=`<h3>🖨️ Etiquetas QR</h3><p style="font-size:.82em;opacity:.8;margin:6px 0">Elige qué zona imprimir:</p><div class="x-bar">${LY.z.map(z=>`<button class="x-btn alt" onclick="lyPrintQR('${esc(z.id)}')">${esc(z.name)}</button>`).join('')}<button class="x-btn" onclick="lyPrintQR('ALL')">Todas</button></div><div class="x-bar" style="margin-top:12px"><button class="x-btn alt" onclick="lyCloseMod()">Cerrar</button></div>`;$('ly-mod').style.display='flex';};
 window.lyPrintQR=async id=>{await qrLib();if(!window.QRCode)return toast('⚠️ No se pudo cargar el generador de QR (revisa internet)');
  const zs=id==='ALL'?LY.z:LY.z.filter(z=>z.id===id),tmp=document.createElement('div');tmp.style.cssText='position:fixed;left:-9999px';document.body.appendChild(tmp);const L=[];
- zs.forEach(z=>cells(z).forEach(([c,l])=>{const txt=z.kind==='floor'?z.name:`${z.id}|${c}|${l}`;tmp.innerHTML='';new QRCode(tmp,{text:txt,width:140,height:140,correctLevel:QRCode.CorrectLevel.M});const cv=tmp.querySelector('canvas'),im=tmp.querySelector('img');L.push({src:cv?cv.toDataURL():(im?im.src:''),a:z.name,b:z.kind==='floor'?'Zona de piso':`Columna ${c} · Nivel ${l}`,c:txt});}));
+ zs.forEach(z=>cells(z).forEach(([c,l])=>{const txt=code(z,c,l);tmp.innerHTML='';new QRCode(tmp,{text:txt,width:140,height:140,correctLevel:QRCode.CorrectLevel.M});const cv=tmp.querySelector('canvas'),im=tmp.querySelector('img');L.push({src:cv?cv.toDataURL():(im?im.src:''),a:txt,b:z.name+(z.kind==='floor'?'':` · Col ${c} · Nivel ${l}`),c:''});}));
  tmp.remove();const w=window.open('','_blank');if(!w)return toast('⚠️ Permite las ventanas emergentes para imprimir');
- w.document.write(`<title>Etiquetas QR</title><style>body{font-family:Segoe UI,Arial;margin:8px}.g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.e{border:1.5px solid #000;border-radius:6px;padding:6px;text-align:center;break-inside:avoid}.e img{width:100%;max-width:140px}.a{font-weight:800;font-size:15px}.b{font-size:12px}.c{font-size:10px;color:#555}</style><div class="g">${L.map(x=>`<div class="e"><img src="${x.src}"><div class="a">${esc(x.a)}</div><div class="b">${esc(x.b)}</div><div class="c">${esc(x.c)}</div></div>`).join('')}</div><script>setTimeout(()=>print(),700)<\/script>`);w.document.close();lyCloseMod();};
+ w.document.write(`<title>Etiquetas QR</title><style>body{font-family:Segoe UI,Arial;margin:8px}.g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.e{border:1.5px solid #000;border-radius:6px;padding:6px;text-align:center;break-inside:avoid}.e img{width:100%;max-width:140px}.a{font-weight:800;font-size:17px;margin-top:2px}.b{font-size:12px}.c{font-size:10px;color:#555}</style><div class="g">${L.map(x=>`<div class="e"><img src="${x.src}"><div class="a">${esc(x.a)}</div><div class="b">${esc(x.b)}</div><div class="c">${esc(x.c)}</div></div>`).join('')}</div><script>setTimeout(()=>print(),700)<\/script>`);w.document.close();lyCloseMod();};
 setInterval(async()=>{if(items.length){await load();unplaced();}},6000);
 const _sam=window.supaAddMov;if(typeof _sam==='function')window.supaAddMov=async function(m){const r=await _sam.apply(this,arguments);try{if(m&&m.tipo==='salida')window.lyDeduct(m.sku,+m.cantidad||0,m.id||(m.sku+'|'+(m.fechaObj||'')));}catch(e){}return r;};
 
