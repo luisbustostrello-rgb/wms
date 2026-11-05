@@ -3970,8 +3970,8 @@ function resolve(txt){const t=String(txt||'').trim().toUpperCase();let m=t.match
  if(m){z=LY.z.find(x=>x.pre===m[1]&&x.kind==='rack');if(z&&+m[2]>=1&&+m[2]<=z.cols&&+m[3]>=1&&+m[3]<=z.lvls)return{z,c:+m[2],l:+m[3]};return null;}
  m=t.match(/^(.+?)[|:;](\d+)[|:;](\d+)$/);if(m){z=LY.z.find(x=>x.kind==='rack'&&(x.id.toUpperCase()===m[1]||x.pre===m[1]||x.name.toUpperCase()===m[1]));if(z&&+m[2]<=z.cols&&+m[3]<=z.lvls)return{z,c:+m[2],l:+m[3]};return null;}
  z=LY.z.find(x=>x.kind==='floor'&&(x.pre===t||x.name.toUpperCase()===t||x.id.toUpperCase()===t));return z?{z,c:1,l:1}:null;}
-async function load(){if(loaded)return;try{const v=await supaGetConfig('layout_v1');if(v&&v.z)LY=v;norm();MC=null;loaded=true;}catch(e){}}
-function save(){MC=null;setTimeout(()=>{try{refreshCells();}catch(e){}},150);clearTimeout(tm);tm=setTimeout(async()=>{try{await supaSetConfig('layout_v1',LY);}catch(e){toast('⚠️ No se pudo guardar el layout');}},500);}
+async function load(){if(loaded)return;try{const v=await supaGetConfig('layout_v1');if(v&&v.z)LY=v;norm();MC=null;await loadHist();snap=flat();loaded=true;}catch(e){}}
+function save(){logDiff();MC=null;setTimeout(()=>{try{refreshCells();}catch(e){}},150);clearTimeout(tm);tm=setTimeout(async()=>{try{await supaSetConfig('layout_v1',LY);}catch(e){toast('⚠️ No se pudo guardar el layout');}},500);}
 const assigned=s=>Object.values(LY.loc).flat().reduce((a,x)=>a+(x.sku===s?+x.qty:0),0);
 // ── Vista y menú ──
 const W=document.querySelector('.views-wrap'),an=[...document.querySelectorAll('.sidebar .menu-item')].find(e=>/Alertas/.test(e.textContent));
@@ -4061,12 +4061,12 @@ const closeMod=()=>{$('ly-mod').style.display='none';rr();};md.onclick=e=>{if(e.
 window.lyOpen=(z,c,l)=>{cur=[z,c,l];edit();$('ly-mod').style.display='flex';};
 function edit(){const[z,c,l]=cur,zn=LY.z.find(x=>x.id===z),ls=get(z,c,l),av=items.filter(i=>tot(i)>0).slice(0,3000),tu=ls.reduce((a,x)=>a+(+x.qty||0),0);
  $('ly-mb').innerHTML=`<h3>${esc(code(zn,c,l))} <small style="opacity:.7;font-weight:400">${esc(zn.name)}${zn.kind==='rack'?` · Col ${c} · Nivel ${l}`:''}</small></h3><p style="font-size:.82em;opacity:.8;margin:4px 0 10px">${ls.length?`🟩 Llena · ${ls.length} código(s) · ${tu} un.`:'🟥 Vacía'}</p>
- ${ls.map((x,n)=>{const i=items.find(a=>String(a.sku)===String(x.sku));return`<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;margin-bottom:6px"><div style="display:flex;gap:8px;align-items:center"><div style="flex:1"><b>${esc(x.sku)}</b><br><small style="opacity:.75">${esc(i?i.desc1:'(no está en inventario)')}${i?' · stock '+tot(i):''}</small></div><button class="x-btn alt" onclick="lyRm(${n})">✕</button></div>
+ ${ls.map((x,n)=>{const i=items.find(a=>String(a.sku)===String(x.sku));return`<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;margin-bottom:6px"><div style="display:flex;gap:8px;align-items:center"><div style="flex:1"><b>${esc(x.sku)}</b><br><small style="opacity:.75">${esc(i?i.desc1:'(no está en inventario)')}${i?' · stock '+tot(i):''}</small></div><button class="x-btn alt ly-w" onclick="lyMoveOpen(${n})" title="Mover a otra ubicación">↪</button><button class="x-btn alt" onclick="lyRm(${n})">✕</button></div>
  <div style="display:flex;gap:6px;align-items:center;margin-top:6px"><small>Cantidad</small><button class="x-btn alt" onclick="lyStep(${n},-1)">−</button><input type="number" min="1" id="lq${n}" value="${x.qty}" style="width:80px;text-align:center;padding:7px;border-radius:8px;border:1px solid #cde" oninput="lyQty(${n},this.value)"><button class="x-btn alt" onclick="lyStep(${n},1)">＋</button></div></div>`}).join('')}
  <div class="x-bar" style="margin-top:10px"><input id="ly-s" list="ly-dl" placeholder="Código SKU" style="flex:1;min-width:120px" oninput="lyHint()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ly-n').focus();}"><datalist id="ly-dl">${av.map(i=>`<option value="${esc(i.sku)}">${esc(i.desc1)}</option>`).join('')}</datalist><button class="x-btn alt" onclick="lyScanSku()">📷</button><input id="ly-n" type="number" min="1" placeholder="Cant." style="width:75px" onkeydown="if(event.key==='Enter'){event.preventDefault();lyAdd();}"><button class="x-btn" onclick="lyAdd()">Agregar</button></div>
  <label style="display:block;margin-top:8px;font-size:.8em"><input type="checkbox" id="ly-fast" ${fast?'checked':''} onchange="lyFast(this.checked)"> ⚡ Modo rápido: cada código escaneado suma +1 (la cámara sigue abierta)</label>
  <small id="ly-h" style="display:block;margin-top:6px;opacity:.8"></small>
- <div class="x-bar" style="margin-top:12px"><button class="x-btn alt" onclick="lyClear()">Vaciar ubicación</button><button class="x-btn" onclick="lySaveClose()">💾 Guardar y cerrar</button></div>`;}
+ <div class="x-bar" style="margin-top:12px"><button class="x-btn alt" onclick="lyHistLoc()">🧾 Historial</button><button class="x-btn alt" onclick="lyClear()">Vaciar ubicación</button><button class="x-btn" onclick="lySaveClose()">💾 Guardar y cerrar</button></div>`;}
 window.lyFast=v=>{fast=v;};
 window.lySaveClose=()=>{save();toast('✅ Ubicación guardada');closeMod();};
 function addSku(i,q,quiet){const k=key(...cur),a=LY.loc[k]=LY.loc[k]||[],e=a.find(x=>String(x.sku)===String(i.sku));if(e)e.qty+=q;else a.push({sku:i.sku,qty:q});save();if(!quiet)rr();}
@@ -4140,21 +4140,96 @@ fi.onchange=async()=>{const f=fi.files[0];if(!f)return;await load();
 window.lyUpApply=()=>{if(!UP)return;const rep=(document.querySelector('input[name=lm]:checked')||{}).value==='rep';
  if(rep)new Set(UP.ok.map(r=>key(r.z.id,r.c,r.l))).forEach(k=>delete LY.loc[k]);
  UP.ok.forEach(r=>{const k=key(r.z.id,r.c,r.l),a=LY.loc[k]=LY.loc[k]||[],e=a.find(x=>String(x.sku)===String(r.sku));if(e)e.qty+=r.q;else a.push({sku:r.sku,qty:r.q});});
- const n=UP.ok.length;UP=null;save();closeMod();toast(`✅ ${n} filas cargadas en el layout`);};
+ const n=UP.ok.length;UP=null;ACT='Carga masiva';save();closeMod();toast(`✅ ${n} filas cargadas en el layout`);};
 // ── Borrado masivo ──
 window.lyMassDel=()=>{$('ly-mb').innerHTML=`<h3>🗑️ Borrado masivo de ubicaciones</h3><p style="font-size:.82em;opacity:.85;margin:6px 0">Quita el material asignado a las ubicaciones. <b>No modifica el stock del inventario</b>: solo vacía el layout.</p>
  <div class="x-bar"><select id="lm-z" onchange="lyMassCnt()"><option value="ALL">Todas las zonas</option>${LY.z.map(z=>`<option value="${esc(z.id)}">${esc(z.name)}</option>`).join('')}</select></div><p id="lm-c" style="margin:8px 0"></p>
  <div class="x-bar"><input id="lm-t" placeholder='Escribe BORRAR para confirmar' style="flex:1"><button class="x-btn ly-w" onclick="lyMassGo()">Borrar</button><button class="x-btn alt" onclick="lyCloseMod()">Cancelar</button></div>`;$('ly-mod').style.display='flex';lyMassCnt();};
 const mk2=z=>Object.keys(LY.loc).filter(k=>z==='ALL'||k.startsWith(z+'|'));
 window.lyMassCnt=()=>{const ks=mk2($('lm-z').value);$('lm-c').textContent=`Se vaciarán ${ks.length} ubicaciones (${ks.reduce((a,k)=>a+LY.loc[k].length,0)} códigos).`;};
-window.lyMassGo=()=>{if($('lm-t').value.trim().toUpperCase()!=='BORRAR')return toast('Escribe BORRAR para confirmar');const ks=mk2($('lm-z').value);ks.forEach(k=>delete LY.loc[k]);save();closeMod();toast(`🗑️ ${ks.length} ubicaciones vaciadas`);};
+window.lyMassGo=()=>{if($('lm-t').value.trim().toUpperCase()!=='BORRAR')return toast('Escribe BORRAR para confirmar');const ks=mk2($('lm-z').value);ks.forEach(k=>delete LY.loc[k]);ACT='Borrado masivo';save();closeMod();toast(`🗑️ ${ks.length} ubicaciones vaciadas`);};
+// ══ Trazabilidad, mover y conteo cíclico ══
+let HIST=[],hLoaded=false,ACT='',ACTN='',snap=null,ht2=null;
+const uname=()=>{try{return(currentUser&&currentUser.usuario)||'?';}catch(e){return'?';}};
+async function loadHist(){if(hLoaded)return;try{const v=await supaGetConfig('layout_hist');if(Array.isArray(v))HIST=v;hLoaded=true;}catch(e){}}
+function saveHist(){if(!hLoaded)return;clearTimeout(ht2);ht2=setTimeout(async()=>{try{await supaSetConfig('layout_hist',HIST.slice(-4000));}catch(e){}},600);}
+const flat=()=>{const f={};Object.entries(LY.loc).forEach(([k,a])=>a.forEach(x=>{f[k+'#'+x.sku]=(+x.qty||0);}));return f;};
+const kcode=k=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);return z?code(z,+c,+l):k;};
+function logDiff(){const now=flat();if(snap){const ev=[];new Set([...Object.keys(snap),...Object.keys(now)]).forEach(kk=>{const d=(now[kk]||0)-(snap[kk]||0);if(d){const[k,sku]=kk.split('#');ev.push({t:Date.now(),u:uname(),a:ACT||'Edición manual',sku,q:d,loc:kcode(k),n:ACTN||''});}});if(ev.length){HIST.push(...ev);saveHist();}}snap=now;ACT='';ACTN='';}
+// ── Mover ──
+window.lyMoveOpen=n=>{const zn=LY.z.find(x=>x.id===cur[0]),x=get(...cur)[n];if(!x)return;
+ $('ly-mb').innerHTML=`<h3>↪ Mover ${esc(x.sku)}</h3><p style="font-size:.82em;opacity:.8">Desde ${esc(code(zn,cur[1],cur[2]))} · disponible ${x.qty}</p><div class="x-bar" style="margin-top:10px"><input id="mv-d" placeholder="Destino: RB-C04-P01" style="flex:1;min-width:150px"><button class="x-btn alt" onclick="lyMvScan()">📷</button><button class="x-btn alt" onclick="lyMvSug()">💡</button><input id="mv-q" type="number" min="1" max="${x.qty}" value="${x.qty}" style="width:80px"></div><div class="x-bar" style="margin-top:10px"><button class="x-btn ly-w" onclick="lyMoveGo(${n})">Mover</button><button class="x-btn alt" onclick="lyOpen('${cur[0]}',${cur[1]},${cur[2]})">Cancelar</button></div>`;};
+window.lyMvScan=()=>lyScan(t=>{const r=resolve(t);if(!r){toast('⚠️ Ubicación no reconocida: '+t);return true;}$('mv-d').value=code(r.z,r.c,r.l);return false;},'Escanea la ubicación destino');
+window.lyMvSug=()=>{for(const z of LY.z)for(const[c,l]of cells(z).sort((a,b)=>a[0]-b[0]||a[1]-b[1]))if(!full(z.id,c,l)){$('mv-d').value=code(z,c,l);return;}toast('No hay ubicaciones vacías');};
+window.lyMoveGo=n=>{const r=resolve($('mv-d').value),q=+$('mv-q').value,zn=LY.z.find(x=>x.id===cur[0]),ok=key(...cur),ls=LY.loc[ok],x=ls&&ls[n];
+ if(!r)return toast('⚠️ Destino no válido. Formato: RB-C04-P01');if(!x||!(q>0)||q>x.qty)return toast('⚠️ Cantidad inválida');
+ const dk=key(r.z.id,r.c,r.l);if(dk===ok)return toast('⚠️ El destino es la misma ubicación');
+ const sku=x.sku;x.qty-=q;if(x.qty<=0)ls.splice(n,1);if(!ls.length)delete LY.loc[ok];
+ const d=LY.loc[dk]=LY.loc[dk]||[],e=d.find(a=>String(a.sku)===String(sku));if(e)e.qty+=q;else d.push({sku,qty:q});
+ ACT='Movimiento';ACTN=`${code(zn,cur[1],cur[2])} → ${code(r.z,r.c,r.l)}`;save();rr();closeMod();toast('✅ Movido a '+code(r.z,r.c,r.l));};
+// ── Vistas ──
+const mkv=(id,t,body)=>{const d=document.createElement('div');d.className='view';d.id='view-'+id;d.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">${t}</div></div>${body}</div>`;W.appendChild(d);};
+const mkm=(v,t)=>{const m=document.createElement('div');m.className='menu-item';m.setAttribute('onclick',`showView('${v}',this)`);m.innerHTML=t;an.parentNode.insertBefore(m,an);return m;};
+const tzMenu=mkm('trazab','🧾 Trazabilidad');
+const ccMenu=mkm('cc','🔄 Conteo cíclico <span id="cc-badge" style="display:none;background:#e0525e;border-radius:10px;padding:0 7px;font-size:.8em;margin-left:4px"></span>');
+mkv('trazab','🧾 Trazabilidad de <span>ubicaciones</span>',`<div class="x-bar"><button id="tz-b1" class="x-btn" onclick="tzTab(1)">🧾 Historial</button><button id="tz-b2" class="x-btn alt" onclick="tzTab(2)">⚖️ Conciliación</button></div>
+<div id="tz-1"><div class="x-bar"><input id="tz-s" placeholder="SKU" oninput="tzR()" style="width:120px"><input id="tz-l" placeholder="Ubicación" oninput="tzR()" style="width:150px"><input id="tz-u" placeholder="Usuario" oninput="tzR()" style="width:110px"><select id="tz-a" onchange="tzR()"><option value="">Todas las acciones</option><option>Movimiento</option><option>Edición manual</option><option>Salida (movimiento)</option><option>Carga masiva</option><option>Borrado masivo</option><option>Ajuste conteo cíclico</option><option>Conteo</option></select><input id="tz-d1" type="date" onchange="tzR()"><input id="tz-d2" type="date" onchange="tzR()"><button class="x-btn" onclick="tzXls(1)">📊 Excel</button></div><div class="x-wrap" id="tz-t"></div></div>
+<div id="tz-2" style="display:none"><div class="x-grid" id="tz-st"></div><div class="x-bar"><select id="tz-f" onchange="tzC()"><option value="">Solo con diferencias</option><option value="all">Todos</option></select><button class="x-btn" onclick="tzXls(2)">📊 Excel</button></div><div class="x-wrap" id="tz-c"></div></div>`);
+mkv('cc','🔄 Conteo <span>cíclico</span>',`<div class="x-grid" id="cc-st"></div><div class="x-card ly-w"><h3>Programación</h3><div class="x-bar" style="margin-top:8px"><label style="font-size:.8em">Ubicaciones por día <input id="cc-pd" type="number" min="1" style="width:70px" onchange="ccSet('perDay',+this.value)"></label><label style="font-size:.8em">Contar cada (días) <input id="cc-fr" type="number" min="1" style="width:70px" onchange="ccSet('freq',+this.value)"></label><label style="font-size:.8em"><input id="cc-em" type="checkbox" onchange="ccSet('empty',this.checked)"> Incluir vacías</label><button class="x-btn alt" onclick="ccRegen()">↻ Regenerar lista de hoy</button></div></div>
+<div class="x-bar"><input id="cc-go" placeholder="Contar otra ubicación: RB-C04-P01" style="min-width:230px" onkeydown="if(event.key==='Enter')ccGo()"><button class="x-btn alt" onclick="ccScan()">📷 Escanear</button><button class="x-btn alt" onclick="ccGo()">Contar</button></div><div class="x-wrap" id="cc-t"></div>`);
+const stz=document.createElement('style');stz.textContent='.tz-p{color:#16a34a;font-weight:700}.tz-m{color:#dc2626;font-weight:700}';document.head.appendChild(stz);
+// ── Historial ──
+let tzRows=[],tzCR=[];
+window.tzTab=n=>{$('tz-1').style.display=n===1?'':'none';$('tz-2').style.display=n===2?'':'none';$('tz-b1').className='x-btn'+(n===1?'':' alt');$('tz-b2').className='x-btn'+(n===2?'':' alt');n===1?tzR():tzC();};
+const dsc=sku=>{const i=items.find(a=>String(a.sku)===String(sku));return i?i.desc1:'';};
+window.tzR=function(){const s=$('tz-s').value.trim().toLowerCase(),l=$('tz-l').value.trim().toUpperCase(),u=$('tz-u').value.trim().toLowerCase(),a=$('tz-a').value,d1=$('tz-d1').value?new Date($('tz-d1').value+'T00:00:00').getTime():0,d2=$('tz-d2').value?new Date($('tz-d2').value+'T23:59:59').getTime():1e15;
+ tzRows=HIST.filter(h=>(!s||String(h.sku).toLowerCase().includes(s))&&(!l||String(h.loc).toUpperCase().includes(l)||String(h.n||'').toUpperCase().includes(l))&&(!u||String(h.u).toLowerCase().includes(u))&&(!a||h.a===a)&&h.t>=d1&&h.t<=d2).reverse();
+ $('tz-t').innerHTML=`<table class="x-tbl"><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>SKU</th><th>Descripción</th><th>Ubicación</th><th>Cant.</th><th>Detalle</th></tr>${tzRows.slice(0,500).map(h=>`<tr><td>${new Date(h.t).toLocaleString('es-CL')}</td><td>${esc(h.u)}</td><td>${esc(h.a)}</td><td>${esc(h.sku)}</td><td>${esc(dsc(h.sku))}</td><td>${esc(h.loc)}</td><td class="${h.q>0?'tz-p':h.q<0?'tz-m':''}">${h.q>0?'+':''}${h.q}</td><td>${esc(h.n||'')}</td></tr>`).join('')||'<tr><td colspan=8>Sin registros todavía. Aquí quedará cada movimiento, ajuste y conteo.</td></tr>'}</table>${tzRows.length>500?`<small style="color:var(--t-text)">Mostrando 500 de ${tzRows.length}. Exporta a Excel para ver todo.</small>`:''}`;};
+window.tzC=function(){const ass={};Object.values(LY.loc).flat().forEach(x=>{ass[String(x.sku)]=(ass[String(x.sku)]||0)+(+x.qty||0);});
+ tzCR=[];const seen=new Set();items.forEach(i=>{const st=tot(i),ub=ass[String(i.sku)]||0;seen.add(String(i.sku));if(st===0&&ub===0)return;const d=st-ub;tzCR.push({SKU:i.sku,'Descripción':i.desc1,'Stock inventario':st,Ubicado:ub,Diferencia:d,Estado:d>0?'Falta ubicar':d<0?'Sobre-ubicado':'OK'});});
+ Object.keys(ass).forEach(s=>{if(!seen.has(s))tzCR.push({SKU:s,'Descripción':'(no existe en inventario)','Stock inventario':0,Ubicado:ass[s],Diferencia:-ass[s],Estado:'Sobre-ubicado'});});
+ const dif=tzCR.filter(r=>r.Diferencia!==0);$('tz-st').innerHTML=[['SKUs con diferencia',dif.length],['Unidades sin ubicar',dif.reduce((a,r)=>a+(r.Diferencia>0?r.Diferencia:0),0)],['Unidades sobre-ubicadas',dif.reduce((a,r)=>a-(r.Diferencia<0?r.Diferencia:0),0)]].map(([a,b])=>`<div class="x-card"><h3>${a}</h3><p>${b}</p></div>`).join('');
+ const v=$('tz-f').value==='all'?tzCR:dif;$('tz-c').innerHTML=`<table class="x-tbl"><tr><th>SKU</th><th>Descripción</th><th>Stock</th><th>Ubicado</th><th>Diferencia</th><th>Estado</th></tr>${v.slice(0,500).map(r=>`<tr><td>${esc(r.SKU)}</td><td>${esc(r['Descripción'])}</td><td>${r['Stock inventario']}</td><td>${r.Ubicado}</td><td class="${r.Diferencia>0?'tz-m':r.Diferencia<0?'tz-p':''}">${r.Diferencia}</td><td>${r.Estado}</td></tr>`).join('')||'<tr><td colspan=6>✅ Sin diferencias.</td></tr>'}</table>`;};
+window.tzXls=n=>{const wb=XLSX.utils.book_new();
+ if(n===1){if(!tzRows.length)return toast('⚠️ Sin datos');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(tzRows.map(h=>({Fecha:new Date(h.t).toLocaleString('es-CL'),Usuario:h.u,Acción:h.a,SKU:h.sku,Descripción:dsc(h.sku),Ubicación:h.loc,Cantidad:h.q,Detalle:h.n||''}))),'Historial');XLSX.writeFile(wb,'historial_ubicaciones.xlsx');}
+ else{const v=$('tz-f').value==='all'?tzCR:tzCR.filter(r=>r.Diferencia!==0);if(!v.length)return toast('⚠️ Sin diferencias');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(v),'Conciliación');XLSX.writeFile(wb,'conciliacion_stock_ubicaciones.xlsx');}};
+window.lyHistLoc=()=>{const l=kcode(cur.join('|'));closeMod();showView('trazab',tzMenu);setTimeout(()=>{$('tz-l').value=l;tzTab(1);},200);};
+// ── Conteo cíclico ──
+const today=()=>new Date().toISOString().slice(0,10),ccI=()=>{LY.cc=LY.cc||{perDay:10,freq:30,empty:false,date:'',keys:[]};LY.cnt=LY.cnt||{};return LY.cc;};
+function ccPlan(force){const c=ccI();if(!force&&c.date===today())return;const lim=Date.now()-c.freq*864e5,cand=[];LY.z.forEach(z=>cells(z).forEach(([a,b])=>{if(!c.empty&&!full(z.id,a,b))return;const k=key(z.id,a,b),t=(LY.cnt[k]||{}).t||0;if(t<lim)cand.push([k,t]);}));cand.sort((x,y)=>x[1]-y[1]);c.keys=cand.slice(0,c.perDay).map(x=>x[0]);c.date=today();save();}
+const doneToday=k=>{const e=LY.cnt[k];return e&&new Date(e.t).toISOString().slice(0,10)===today()?e:null;};
+function ccBadge(){const c=ccI(),n=c.keys.filter(k=>!doneToday(k)).length,b=$('cc-badge');if(b){b.style.display=n?'inline-block':'none';b.textContent=n;}}
+window.ccSet=(k,v)=>{ccI()[k]=v;save();};window.ccRegen=()=>{ccPlan(true);ccR();toast('Lista regenerada');};
+window.ccR=function(){ccPlan(false);const c=ccI(),done=c.keys.filter(k=>doneToday(k)).length,h30=HIST.filter(h=>h.a==='Conteo'&&h.t>Date.now()-30*864e5),acc=h30.length?Math.round(h30.filter(h=>h.n==='OK').length*100/h30.length):null,lim=Date.now()-c.freq*864e5;
+ let nunca=0,venc=0;LY.z.forEach(z=>cells(z).forEach(([a,b])=>{if(!c.empty&&!full(z.id,a,b))return;const t=(LY.cnt[key(z.id,a,b)]||{}).t||0;if(!t)nunca++;if(t<lim)venc++;}));
+ $('cc-pd').value=c.perDay;$('cc-fr').value=c.freq;$('cc-em').checked=!!c.empty;
+ $('cc-st').innerHTML=[['Hoy',`${done}/${c.keys.length}`],['Exactitud 30 días',acc===null?'—':acc+'%'],['Nunca contadas',nunca],['Vencidas',venc]].map(([a,b])=>`<div class="x-card"><h3>${a}</h3><p>${b}</p></div>`).join('');
+ $('cc-t').innerHTML=`<table class="x-tbl"><tr><th>Ubicación</th><th>Contenido</th><th>Último conteo</th><th>Estado</th><th></th></tr>${c.keys.map(k=>{const[zid,a,b]=k.split('|'),n=get(zid,+a,+b).length,e=LY.cnt[k],d=doneToday(k);return`<tr><td><b>${esc(kcode(k))}</b></td><td>${n?n+' código(s)':'Vacía'}</td><td>${e?new Date(e.t).toLocaleDateString('es-CL'):'Nunca'}</td><td>${d?(d.ok?'✅ OK':'⚠️ Con diferencia'):'⏳ Pendiente'}</td><td><button class="x-btn ly-w" onclick="ccOpen('${k}')">${d?'Recontar':'Contar'}</button></td></tr>`}).join('')||'<tr><td colspan=5>✅ No hay ubicaciones pendientes de conteo.</td></tr>'}</table>`;ccBadge();};
+window.ccGo=()=>{const r=resolve($('cc-go').value);if(!r)return toast('⚠️ Ubicación no válida. Formato: RB-C04-P01');ccOpen(key(r.z.id,r.c,r.l));};
+window.ccScan=()=>lyScan(t=>{const r=resolve(t);if(!r){toast('⚠️ Ubicación no reconocida: '+t);return true;}lyCamStop();ccOpen(key(r.z.id,r.c,r.l));return false;},'Escanea la ubicación a contar');
+let CT=null;
+window.ccOpen=k=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);if(!z)return;CT={k,z,c:+c,l:+l,lines:get(zid,+c,+l).map(x=>({sku:x.sku,exp:+x.qty,cnt:''}))};ccModal();$('ly-mod').style.display='flex';};
+function ccModal(){const{z,c,l,lines}=CT;$('ly-mb').innerHTML=`<h3>🔄 Contar ${esc(code(z,c,l))}</h3><p style="font-size:.8em;opacity:.8;margin:4px 0">${esc(z.name)} · ${lines.length?'Ingresa lo que realmente hay':'El sistema indica que está vacía'}</p>
+ ${lines.map((x,n)=>`<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;margin:6px 0"><b>${esc(x.sku)}</b> <small style="opacity:.75">${esc(dsc(x.sku))}</small><div style="display:flex;gap:8px;align-items:center;margin-top:6px"><small>Sistema: <b>${x.exp}</b></small><input type="number" min="0" value="${x.cnt}" placeholder="Contado" style="width:90px;padding:7px;border-radius:8px;border:1px solid #cde" oninput="ccLine(${n},this.value)"></div></div>`).join('')}
+ <div class="x-bar" style="margin-top:8px"><input id="cc-s" list="ly-dl" placeholder="SKU no esperado" style="flex:1;min-width:110px"><input id="cc-q" type="number" min="1" placeholder="Cant." style="width:75px"><button class="x-btn alt ly-w" onclick="ccAdd()">➕</button></div>
+ <div class="x-bar" style="margin-top:12px"><button class="x-btn ly-w" onclick="ccOk()">✅ ${lines.length?'Coincide todo':'Sigue vacía'}</button><button class="x-btn ly-w" onclick="ccSave()">💾 Guardar conteo</button><button class="x-btn alt" onclick="lyCloseMod()">Cancelar</button></div>`;}
+window.ccLine=(n,v)=>{CT.lines[n].cnt=v;};
+window.ccAdd=()=>{const s=$('cc-s').value.trim(),q=+$('cc-q').value,i=items.find(a=>String(a.sku)===s);if(!i)return toast('⚠️ Ese SKU no existe');if(!(q>=1))return toast('⚠️ Ingresa la cantidad');const e=CT.lines.find(x=>String(x.sku)===String(i.sku));if(e)e.cnt=q;else CT.lines.push({sku:i.sku,exp:0,cnt:q});ccModal();};
+window.ccOk=()=>{CT.lines.forEach(x=>{x.cnt=x.exp;});ccSave();};
+window.ccSave=()=>{if(CT.lines.some(x=>x.cnt===''||!(+x.cnt>=0)))return toast('⚠️ Ingresa todas las cantidades o usa “Coincide todo”');
+ const{k,z,c,l,lines}=CT,dif=lines.filter(x=>+x.cnt!==x.exp).length,nl=lines.filter(x=>+x.cnt>0).map(x=>({sku:x.sku,qty:+x.cnt}));
+ if(nl.length)LY.loc[k]=nl;else delete LY.loc[k];ccI();LY.cnt[k]={t:Date.now(),ok:dif===0};
+ HIST.push({t:Date.now(),u:uname(),a:'Conteo',sku:'—',q:dif,loc:code(z,c,l),n:dif?'Dif':'OK'});
+ ACT='Ajuste conteo cíclico';save();CT=null;closeMod();ccR();toast(dif?`⚠️ Conteo guardado con ${dif} diferencia(s)`:'✅ Conteo OK');};
+{const sv0=window.showView;window.showView=function(n,e){sv0(n,e);if(n==='trazab')setTimeout(async()=>{await load();tzTab(1);},120);if(n==='cc')setTimeout(async()=>{await load();ccR();},120);};}
+setInterval(async()=>{if(items.length){await load();ccBadge();}},6000);
 
 window.lyReportRows=async()=>{await load();const R=[];Object.entries(LY.loc).forEach(([k,a])=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);if(!z)return;a.forEach(x=>{const i=items.find(t=>String(t.sku)===String(x.sku));R.push({Ubicación:code(z,+c,+l),Zona:z.name,SKU:x.sku,Descripción:i?i.desc1:'',Cantidad:x.qty});});});return R.sort((a,b)=>a.Ubicación.localeCompare(b.Ubicación));};
 // ── Auto-descuento por salidas ──
 window.lyDeduct=async function(sku,qty,id){await load();LY.done=LY.done||[];if(id&&LY.done.includes(id))return;if(id)LY.done.push(id);if(LY.done.length>400)LY.done.shift();
  let rem=+qty||0;const ks=Object.keys(LY.loc).filter(k=>LY.loc[k].some(x=>String(x.sku)===String(sku)));
  for(const k of ks){if(rem<=0)break;const a=LY.loc[k],l=a.find(x=>String(x.sku)===String(sku)),t=Math.min(rem,+l.qty);l.qty-=t;rem-=t;if(l.qty<=0)a.splice(a.indexOf(l),1);if(!a.length)delete LY.loc[k];}
- save();if(rem>0&&ks.length)toast(`🧱 Layout: ${rem} un. de ${sku} no estaban ubicadas`);else if(ks.length)toast('🧱 Layout actualizado por la salida');
+ ACT='Salida (movimiento)';save();if(rem>0&&ks.length)toast(`🧱 Layout: ${rem} un. de ${sku} no estaban ubicadas`);else if(ks.length)toast('🧱 Layout actualizado por la salida');
  if($('view-layout').classList.contains('active'))rr();else unplaced();};
 // ── Material sin ubicar ──
 function unp(){const ass={};Object.values(LY.loc).flat().forEach(x=>{ass[x.sku]=(ass[x.sku]||0)+(+x.qty||0);});return items.map(i=>({i,u:tot(i)-(ass[i.sku]||0)})).filter(o=>o.u>0).sort((a,b)=>b.u-a.u);}
