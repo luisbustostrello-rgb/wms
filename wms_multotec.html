@@ -4044,7 +4044,7 @@ window.fetch=function(u,o){
  if(block){
   if(url.indexOf('/rest/v1/usuarios')<0&&url.indexOf('/rest/v1/config')<0){
    blockedAt=Date.now();
-   clearTimeout(rl);rl=setTimeout(()=>{try{loadAppData();}catch(e){}},1500); // revierte lo que se vio en pantalla
+   clearTimeout(rl);rl=setTimeout(async()=>{try{await loadAppData();['renderTable','renderMovimientos','renderVauchers','renderDespachos'].forEach(k=>{try{if(typeof window[k]==='function')window[k]();}catch(e){}});}catch(e){}},1500); // revierte lo que se vio en pantalla
   }
   return Promise.resolve(new Response('{"message":"solo lectura"}',{status:403,headers:{'Content-Type':'application/json'}}));}
  return f.apply(this,arguments);};
