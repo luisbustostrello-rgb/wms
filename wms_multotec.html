@@ -4259,26 +4259,79 @@ const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='layout')s
 
 </script>
 <script>
-(function(){const f=window.fetch,MSG='👁️ Modo invitado: solo lectura, no se guardó nada';let last=0,blockedAt=0,rl=null;
-setInterval(()=>{try{document.body.classList.toggle('guest',isGuest());}catch(e){}},600);
-const isGuest=()=>{try{return typeof currentUser!=='undefined'&&!!currentUser&&currentUser.rol==='Invitado';}catch(e){return false;}};
-window.fetch=function(u,o){
- let block=false,url='';
- try{const m=((o&&o.method)||'GET').toUpperCase();url=String((u&&u.url)||u);
-  block=m!=='GET'&&m!=='HEAD'&&url.indexOf('/rest/v1/')>-1&&isGuest();}catch(e){}
+(function(){
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MODS={inventario:'Inventario',movimientos:'Movimientos',traspasos:'Traspasos',despachos:'Despachos',proveedores:'Proveedores',config:'Layout, lotes y conteos'};
+let PERM={},permLoaded=false,permRol=null,lastT=0,blockedAt=0,blockMsg='',rl=null,quiet=false;
+const cu=()=>{try{return typeof currentUser!=='undefined'?currentUser:null;}catch(e){return null;}};
+const rol=()=>{const u=cu();return u?u.rol:'';};
+const RO=r=>r==='Invitado'||r==='Solo lectura';
+const isRO=()=>{const r=rol();if(!r||r==='Admin')return false;if(RO(r))return true;return permLoaded&&Object.keys(MODS).every(k=>PERM[k]!==true);};
+const canWrite=t=>{const r=rol();if(!r||r==='Admin')return true;if(RO(r)||t==='usuarios')return false;if(!permLoaded)return true;return PERM[t]===true;};
+const f0=window.fetch;
+async function loadPerm(){const r=rol();if(!r||r==='Admin'){permLoaded=true;PERM={};return;}
+ try{const x=await f0(`${SUPA_URL}/rest/v1/wms_permisos?rol=eq.${encodeURIComponent(r)}&select=modulo,escribir`,{headers:SUPA_H});if(x.ok){const a=await x.json();PERM={};a.forEach(p=>{PERM[p.modulo]=!!p.escribir;});permLoaded=true;}}catch(e){}}
+function revert(){clearTimeout(rl);rl=setTimeout(async()=>{quiet=true;try{await loadAppData();['renderTable','renderMovimientos','renderVauchers','renderDespachos'].forEach(k=>{try{if(typeof window[k]==='function')window[k]();}catch(e){}});}catch(e){}setTimeout(()=>{quiet=false;},1500);},1500);}
+// ── Guardia de escritura (por rol y permisos) ──
+window.fetch=function(u,o){let block=false,tbl=null;
+ try{const m=((o&&o.method)||'GET').toUpperCase(),url=String((u&&u.url)||u);
+  if(m!=='GET'&&m!=='HEAD'){const x=url.match(/\/rest\/v1\/(?:rpc\/)?([a-z_]+)/);if(x){tbl=x[1]==='wms_apply_item_changes'?'inventario':x[1];if((MODS[tbl]||tbl==='usuarios')&&cu()&&!canWrite(tbl))block=true;}}}catch(e){}
  if(block){
-  if(url.indexOf('/rest/v1/usuarios')<0&&url.indexOf('/rest/v1/config')<0){
-   blockedAt=Date.now();
-   clearTimeout(rl);rl=setTimeout(async()=>{try{await loadAppData();['renderTable','renderMovimientos','renderVauchers','renderDespachos'].forEach(k=>{try{if(typeof window[k]==='function')window[k]();}catch(e){}});}catch(e){}},1500); // revierte lo que se vio en pantalla
-  }
-  return Promise.resolve(new Response('{"message":"solo lectura"}',{status:403,headers:{'Content-Type':'application/json'}}));}
- return f.apply(this,arguments);};
-// El invitado nunca ve mensajes de éxito falsos
+  if(tbl!=='usuarios'&&tbl!=='config'){blockedAt=Date.now();blockMsg=RO(rol())||isRO()?'👁️ Modo solo lectura: no se guardó nada':`🔒 Tu rol (${rol()}) no puede modificar: ${MODS[tbl]}`;revert();}
+  return Promise.resolve(new Response('{"message":"sin permiso"}',{status:403,headers:{'Content-Type':'application/json'}}));}
+ return f0.apply(this,arguments);};
 const t0=window.toast;
-if(typeof t0==='function')window.toast=function(m){
- if(isGuest()&&Date.now()-blockedAt<6000&&/^\s*(✅|💾|📥)/.test(String(m))){if(Date.now()-last>1500){last=Date.now();return t0(MSG);}return;}
+if(typeof t0==='function')window.toast=function(m){const s=String(m);
+ if(quiet&&/Bienvenido/.test(s))return;
+ if(Date.now()-blockedAt<6000&&/^\s*(✅|💾|📥)/.test(s)){if(Date.now()-lastT>1500){lastT=Date.now();return t0(blockMsg);}return;}
  return t0.apply(this,arguments);};
+setInterval(()=>{try{const r=rol();if(r!==permRol){permRol=r;permLoaded=false;PERM={};if(r)loadPerm();}
+ document.body.classList.toggle('guest',isRO());document.querySelectorAll('.adm-only').forEach(e=>{e.style.display=r==='Admin'?'':'none';});}catch(e){}},600);
+// ── Inventario por diferencias (cada objeto recuerda cómo lo cargó) ──
+const NUM=['bu1','bu2','bu3','bu4','bu5','transito'],js=JSON.stringify;
+const _sg=window.supaGet;
+if(typeof _sg==='function')window.supaGet=async function(t){const r=await _sg.apply(this,arguments);if(t==='inventario'&&Array.isArray(r))r.forEach(o=>{try{Object.defineProperty(o,'__b',{value:js(o),enumerable:false,writable:true,configurable:true});}catch(e){}});return r;};
+const _su=window.supaUpsertInv;
+if(typeof _su==='function')window.supaUpsertInv=async function(arr){
+ if(!arr||!arr.length)return;const delta=[],legacy=[],objs=[];
+ arr.forEach(o=>{if(!o.__b){legacy.push(o);return;}const b=JSON.parse(o.__b),d={},s={};
+  NUM.forEach(k=>{const x=(+o[k]||0)-(+b[k]||0);if(x)d[k]=x;});
+  Object.keys(o).forEach(k=>{if(!NUM.includes(k)&&js(o[k])!==js(b[k]))s[k]=o[k];});
+  Object.keys(b).forEach(k=>{if(!(k in o)&&!NUM.includes(k))s[k]=null;});
+  if(Object.keys(d).length||Object.keys(s).length){delta.push({sku:String(o.sku),d,s});objs.push(o);}});
+ if(legacy.length)await _su.call(this,legacy);
+ if(!delta.length)return;
+ let r;try{r=await fetch(`${SUPA_URL}/rest/v1/rpc/wms_apply_item_changes`,{method:'POST',headers:SUPA_H,body:js({changes:delta})});}catch(e){return _su.call(this,objs);}
+ if(r.status===404)return _su.call(this,objs);
+ if(!r.ok){let m='';try{const j=await r.json();m=j.message||j.hint||'';}catch(e){}if(r.status!==403){blockedAt=0;revertQuiet();}throw new Error(m||'No se pudo guardar el inventario');}
+ const rows=await r.json(),by=new Map(rows.map(x=>[String(x.sku),x]));
+ objs.forEach(o=>{const m=by.get(String(o.sku));if(m){Object.keys(o).forEach(k=>{if(!(k in m))delete o[k];});Object.assign(o,m);o.__b=js(m);}});};
+function revertQuiet(){quiet=true;setTimeout(async()=>{try{await loadAppData();['renderTable','renderMovimientos'].forEach(k=>{try{if(typeof window[k]==='function')window[k]();}catch(e){}});}catch(e){}setTimeout(()=>{quiet=false;},1500);},400);}
+// ── Vistas de administración ──
+const W=document.querySelector('.views-wrap'),au=document.getElementById('audit-btn');
+const mkv=(id,t,body)=>{const d=document.createElement('div');d.className='view';d.id='view-'+id;d.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">${t}</div></div>${body}</div>`;W.appendChild(d);};
+const mkm=(v,t)=>{const m=document.createElement('div');m.className='menu-item adm-only';m.style.display='none';m.setAttribute('onclick',`showView('${v}',this)`);m.innerHTML=t;(au||document.querySelector('.sidebar .menu-item:last-child')).insertAdjacentElement('afterend',m);return m;};
+mkm('audseg','🛡️ Auditoría segura');mkm('perm','🔐 Permisos');
+mkv('perm','🔐 Permisos por <span>rol</span>',`<p style="color:var(--t-text);opacity:.8;font-size:.85em">Marca qué roles pueden <b>modificar</b> cada módulo. Todos pueden ver. El Admin siempre puede todo. Invitado y Solo lectura nunca modifican.</p><div class="x-wrap" id="pm-t"></div>`);
+mkv('audseg','🛡️ Auditoría <span>segura</span>',`<p style="color:var(--t-text);opacity:.8;font-size:.85em">Registro generado por la base de datos: nadie puede editarlo ni borrarlo desde la app.</p><div class="x-bar"><select id="as-t" onchange="asR()"><option value="">Todas las tablas</option>${Object.keys(MODS).concat('usuarios').map(k=>`<option>${k}</option>`).join('')}</select><input id="as-u" placeholder="Usuario" style="width:130px" oninput="asD()"><select id="as-a" onchange="asR()"><option value="">Todas las acciones</option><option>INSERT</option><option>UPDATE</option><option>DELETE</option></select><input id="as-d1" type="date" onchange="asR()"><input id="as-d2" type="date" onchange="asR()"><button class="x-btn" onclick="asX()">📊 Excel</button></div><div class="x-wrap" id="as-r"></div>`);
+window.pmR=async function(){const roles=[...document.querySelectorAll('#u-rol option')].map(o=>o.value).filter(v=>v&&v!=='Admin');let rows=[];
+ try{const r=await f0(`${SUPA_URL}/rest/v1/wms_permisos?select=*`,{headers:SUPA_H});if(!r.ok)return $('pm-t').innerHTML='<div class="x-card">⚠️ Falta ejecutar el SQL de seguridad (tabla wms_permisos).</div>';rows=await r.json();}catch(e){}
+ const M={};rows.forEach(p=>{M[p.rol+'|'+p.modulo]=!!p.escribir;});
+ $('pm-t').innerHTML=`<table class="x-tbl"><tr><th>Rol</th>${Object.values(MODS).map(m=>`<th>${m}</th>`).join('')}</tr>${roles.map(ro=>`<tr><td><b>${esc(ro)}</b></td>${Object.keys(MODS).map(k=>`<td style="text-align:center"><input type="checkbox" ${M[ro+'|'+k]?'checked':''} ${RO(ro)?'disabled':''} onchange="pmSet('${esc(ro)}','${k}',this.checked)"></td>`).join('')}</tr>`).join('')}</table>`;};
+window.pmSet=async(ro,k,v)=>{const r=await f0(`${SUPA_URL}/rest/v1/wms_permisos?on_conflict=rol,modulo`,{method:'POST',headers:{...SUPA_H,Prefer:'resolution=merge-duplicates,return=minimal'},body:js([{rol:ro,modulo:k,escribir:v}])});toast(r.ok?'✅ Permiso actualizado':'⚠️ No se pudo guardar el permiso');};
+let AS=[],adt=null;window.asD=()=>{clearTimeout(adt);adt=setTimeout(asR,400);};
+const fv=v=>{const s=v===undefined?'∅':js(v);return s.length>24?s.slice(0,22)+'…':s;};
+const chg=a=>{if(a.accion==='INSERT')return'Nuevo registro';if(a.accion==='DELETE')return'Registro eliminado';const g=x=>x&&typeof x==='object'?(x.data&&typeof x.data==='object'?x.data:(x.value&&typeof x.value==='object'?x.value:x)):{};const A=g(a.antes),B=g(a.despues),ks=[...new Set([...Object.keys(A),...Object.keys(B)])].filter(k=>k!=='updated_at'&&js(A[k])!==js(B[k]));return ks.slice(0,6).map(k=>`${k}: ${fv(A[k])} → ${fv(B[k])}`).join(' · ')+(ks.length>6?' …':'')||'Modificado';};
+window.asR=async function(){let q='select=*&order=ts.desc&limit=300';const t=$('as-t').value,u=$('as-u').value.trim(),a=$('as-a').value,d1=$('as-d1').value,d2=$('as-d2').value;
+ if(t)q+='&tabla=eq.'+t;if(u)q+='&usuario=ilike.*'+encodeURIComponent(u)+'*';if(a)q+='&accion=eq.'+a;if(d1)q+='&ts=gte.'+d1+'T00:00:00';if(d2)q+='&ts=lte.'+d2+'T23:59:59';
+ try{const r=await f0(`${SUPA_URL}/rest/v1/auditoria_db?${q}`,{headers:SUPA_H});if(!r.ok)return $('as-r').innerHTML='<div class="x-card">⚠️ Falta ejecutar el SQL de seguridad (tabla auditoria_db) o no tienes permiso.</div>';AS=await r.json();}catch(e){AS=[];}
+ $('as-r').innerHTML=`<table class="x-tbl"><tr><th>Fecha</th><th>Usuario</th><th>Tabla</th><th>Acción</th><th>ID</th><th>Cambio</th></tr>${AS.map(a=>`<tr><td>${new Date(a.ts).toLocaleString('es-CL')}</td><td>${esc(a.usuario)}</td><td>${esc(a.tabla)}</td><td>${esc(a.accion)}</td><td>${esc(a.pk)}</td><td>${esc(chg(a))}</td></tr>`).join('')||'<tr><td colspan=6>Sin registros.</td></tr>'}</table>`;};
+window.asX=()=>{if(!AS.length)return toast('⚠️ Sin datos');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(AS.map(a=>({Fecha:new Date(a.ts).toLocaleString('es-CL'),Usuario:a.usuario,Tabla:a.tabla,Acción:a.accion,ID:a.pk,Cambio:chg(a)}))),'Auditoría');XLSX.writeFile(wb,'auditoria_segura.xlsx');};
+async function sinAcceso(){const v=$('view-usuarios');if(!v||rol()!=='Admin')return;let b=$('ua-b');if(!b){b=document.createElement('div');b.id='ua-b';b.className='x-card';b.style.cssText='margin-bottom:12px;display:none';const tb=v.querySelector('.top-bar');(tb||v.firstElementChild).insertAdjacentElement('afterend',b);}
+ try{const r=await f0(`${SUPA_URL}/rest/v1/rpc/wms_usuarios_sin_acceso`,{method:'POST',headers:SUPA_H,body:'{}'});if(!r.ok){b.style.display='none';return;}const a=await r.json();b.style.display=a.length?'block':'none';b.innerHTML=a.length?`⚠️ <b>${a.length} usuario(s) sin acceso para entrar.</b> Créalos en Supabase → Authentication con el correo:<br><small>${a.map(x=>esc(x)+'@sistemalb.app').join(' · ')}</small>`:'';}catch(e){}}
+const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='perm')setTimeout(pmR,120);if(n==='audseg')setTimeout(asR,120);if(n==='usuarios')setTimeout(sinAcceso,400);};
 })();
+
 </script>
 <script>
 (function(){
