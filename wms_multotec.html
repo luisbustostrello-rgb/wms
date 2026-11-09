@@ -4085,6 +4085,7 @@ window.lyRm=n=>{const k=key(...cur);LY.loc[k].splice(n,1);if(!LY.loc[k].length)d
 window.lyClear=()=>{delete LY.loc[key(...cur)];save();edit();};
 window.lyCloseMod=()=>closeMod();
 window.lyData=()=>LY;
+window.lyAnalytics=async()=>{await load();return{hist:HIST,cnt:LY.cnt||{},loc:LY.loc,z:LY.z,cc:LY.cc||{}};};
 // ══ Ubicaciones en todo el sistema + Excel + carga/borrado masivo ══
 let MC=null;
 const getMap=()=>{if(MC)return MC;const m={};Object.entries(LY.loc).forEach(([k,a])=>{const[zid,c,l]=k.split('|'),z=LY.z.find(x=>x.id===zid);if(!z)return;a.forEach(x=>{(m[String(x.sku).trim().toLowerCase()]=m[String(x.sku).trim().toLowerCase()]||[]).push({code:code(z,+c,+l),zid,c:+c,l:+l,qty:+x.qty||0});});});Object.values(m).forEach(a=>a.sort((p,q)=>p.code.localeCompare(q.code)));return MC=m;};
@@ -4375,6 +4376,57 @@ window.ltR=async function(){await load();$('lt-dl').innerHTML=items.slice(0,3000
 window.ltXls=()=>{if(!view.length)return toast('⚠️ Sin datos');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(view.map(l=>({SKU:l.sku,Lote:l.lote,Vencimiento:l.venc,Días:days(l.venc),Cantidad:l.qty,Estado:est(l.venc)[0]}))),'Lotes');XLSX.writeFile(wb,'lotes_vencimientos.xlsx');};
 const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='lotes')setTimeout(ltR,120);};
 setInterval(async()=>{if(items.length){await load();badge();}},7000);
+})();
+
+</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id),BU=['bu1','bu2','bu3','bu4','bu5'],tot=i=>BU.reduce((a,k)=>a+(+i[k]||0),0);
+const fmt=n=>(+n||0).toLocaleString('es-CL',{maximumFractionDigits:1}),money=n=>'$'+Math.round(+n||0).toLocaleString('es-CL'),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const an=[...document.querySelectorAll('.sidebar .menu-item')].find(e=>/Alertas/.test(e.textContent));
+const m=document.createElement('div');m.className='menu-item';m.setAttribute('onclick',"showView('analisis',this)");m.innerHTML='📊 Análisis';an.parentNode.insertBefore(m,an);
+const v=document.createElement('div');v.className='view';v.id='view-analisis';
+v.innerHTML=`<div class="main-content"><div class="top-bar"><div class="page-title">📊 Análisis de <span>inventario</span></div></div>
+<div class="x-bar"><label style="font-size:.8em;color:var(--t-text)">Período <select id="an-p" onchange="anR()"><option value="30">30 días</option><option value="60">60 días</option><option value="90" selected>90 días</option><option value="180">180 días</option><option value="365">12 meses</option></select></label>
+<label style="font-size:.8em;color:var(--t-text)">ABC según <select id="an-b" onchange="anR()"><option value="c">Consumo anual valorizado</option><option value="s">Valor del stock</option></select></label>
+<label style="font-size:.8em;color:var(--t-text)">Riesgo &lt; <input id="an-r" type="number" min="1" value="15" style="width:60px" onchange="anR()"> días</label>
+<label style="font-size:.8em;color:var(--t-text)">Exceso &gt; <input id="an-e" type="number" min="1" value="180" style="width:70px" onchange="anR()"> días</label></div>
+<div class="x-grid" id="an-k"></div>
+<div class="x-grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))"><div class="x-card"><h3>Pareto ABC (top 25)</h3><div style="height:260px"><canvas id="an-c1"></canvas></div></div><div class="x-card"><h3>Valor del stock por clase</h3><div style="height:260px"><canvas id="an-c2"></canvas></div></div></div>
+<div class="x-bar"><input id="an-q" placeholder="🔍 SKU o descripción" oninput="anT()" style="min-width:170px"><select id="an-cl" onchange="anT()"><option value="">Todas las clases</option><option>A</option><option>B</option><option>C</option><option value="D">D (sin consumo)</option></select><select id="an-st" onchange="anT()"><option value="">Todos los estados</option><option>Quiebre</option><option>Riesgo</option><option>Normal</option><option>Exceso</option><option>Sin movimiento</option></select><button class="x-btn" onclick="anX()">📊 Excel</button></div>
+<div class="x-wrap" id="an-t"></div></div>`;
+document.querySelector('.views-wrap').appendChild(v);
+let R=[],CH=[],S={};
+function calc(){const days=+$('an-p').value,rk=+$('an-r').value||15,ex=+$('an-e').value||180,base=$('an-b').value,lim=Date.now()-days*864e5,cons={};
+ (typeof movimientos!=='undefined'?movimientos:[]).forEach(mv=>{const tp=String(mv.tipo||'').toLowerCase();if(!tp.startsWith('sal'))return;const t=new Date(mv.fechaObj||0).getTime();if(t>=lim)cons[String(mv.sku)]=(cons[String(mv.sku)]||0)+(+mv.cantidad||0);});
+ R=items.map(i=>{const k=String(i.sku),st=tot(i),pu=+i.pUni||0,c=cons[k]||0,cd=c/days,cob=cd>0?st/cd:Infinity,rot=st>0&&c>0?(c*365/days)/st:0,vst=st*pu,vcons=c*pu*365/days;
+  const estado=st===0&&c>0?'Quiebre':c===0&&st>0?'Sin movimiento':cob<rk?'Riesgo':cob>ex?'Exceso':'Normal';
+  return{sku:i.sku,desc:i.desc1||'',st,pu,vst,c,cd,cob,rot,vcons,estado,b:base==='c'?vcons:vst,abc:'D'};});
+ const tb=R.reduce((a,r)=>a+r.b,0);let cum=0;[...R].sort((a,b)=>b.b-a.b).forEach(r=>{if(r.b<=0){r.abc='D';r.cum=100;return;}cum+=r.b;r.cum=tb?cum*100/tb:0;r.abc=r.cum-(tb?r.b*100/tb:0)<80?'A':r.cum-(tb?r.b*100/tb:0)<95?'B':'C';});
+ const vInv=R.reduce((a,r)=>a+r.vst,0),vc=R.reduce((a,r)=>a+r.vcons,0);
+ S={days,vInv,vc,rot:vInv>0?vc/vInv:0,cob:vc>0?vInv/(vc/365):Infinity,n:R.length,A:R.filter(r=>r.abc==='A').length,B:R.filter(r=>r.abc==='B').length,C:R.filter(r=>r.abc==='C').length,
+  quiebre:R.filter(r=>r.estado==='Quiebre').length,riesgo:R.filter(r=>r.estado==='Riesgo').length,exceso:R.filter(r=>r.estado==='Exceso').length,sinmov:R.filter(r=>r.estado==='Sin movimiento').length,
+  inmov:R.filter(r=>r.estado==='Sin movimiento'||r.estado==='Exceso').reduce((a,r)=>a+r.vst,0)};}
+window.anR=async function(){calc();let a30=null,a90=null,n30=0,cobC=null;
+ try{if(window.lyAnalytics){const d=await window.lyAnalytics(),cn=d.hist.filter(h=>h.a==='Conteo'),f=(dd)=>{const x=cn.filter(h=>h.t>Date.now()-dd*864e5);return[x.length?Math.round(x.filter(h=>h.n==='OK').length*100/x.length):null,x.length];};[a30,n30]=f(30);[a90]=f(90);
+  const ks=Object.keys(d.loc),fr=(d.cc&&d.cc.freq)||30;cobC=ks.length?Math.round(ks.filter(k=>d.cnt[k]&&d.cnt[k].t>Date.now()-fr*864e5).length*100/ks.length):null;}}catch(e){}
+ $('an-k').innerHTML=[['Valor del inventario',money(S.vInv)],['Consumo anual (valor)',money(S.vc)],['Rotación (veces/año)',fmt(S.rot)],['Cobertura global',isFinite(S.cob)?fmt(S.cob)+' días':'∞'],
+  ['Clase A / B / C',`${S.A} / ${S.B} / ${S.C}`],['🔴 Quiebres',S.quiebre],['🟠 Riesgo de quiebre',S.riesgo],['🟡 Exceso',S.exceso],['⚪ Sin movimiento',S.sinmov],['💤 Capital inmovilizado',money(S.inmov)],
+  ['Exactitud conteos 30 d',a30===null?'—':a30+'% ('+n30+')'],['Exactitud conteos 90 d',a90===null||a90===undefined?'—':a90+'%'],['Ubicaciones contadas a tiempo',cobC===null?'—':cobC+'%']].map(([a,b])=>`<div class="x-card"><h3>${a}</h3><p style="font-size:1.3em">${b}</p></div>`).join('');
+ anC();anT();};
+function anC(){CH.forEach(c=>{try{c.destroy();}catch(e){}});CH=[];if(typeof Chart==='undefined')return;
+ const top=[...R].filter(r=>r.b>0).sort((a,b)=>b.b-a.b).slice(0,25),tk={color:'#ddd'},gr={color:'rgba(255,255,255,.08)'};
+ CH.push(new Chart($('an-c1'),{type:'bar',data:{labels:top.map(r=>r.sku),datasets:[{type:'bar',label:'Valor',data:top.map(r=>Math.round(r.b)),backgroundColor:'rgba(46,158,122,.8)',yAxisID:'y'},{type:'line',label:'% acumulado',data:top.map(r=>Math.round(r.cum)),borderColor:'#f59e0b',backgroundColor:'#f59e0b',yAxisID:'y1',tension:.2}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{ticks:tk,grid:gr},y:{ticks:tk,grid:gr},y1:{position:'right',min:0,max:100,ticks:tk,grid:{display:false}}},plugins:{legend:{labels:{color:'#ddd'}}}}}));
+ const cl=['A','B','C','D'];CH.push(new Chart($('an-c2'),{type:'doughnut',data:{labels:['A','B','C','D (sin consumo)'],datasets:[{data:cl.map(c=>Math.round(R.filter(r=>r.abc===c).reduce((a,r)=>a+r.vst,0))),backgroundColor:['#22c55e','#eab308','#f97316','#94a3b8']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#ddd'}}}}}));}
+let VW=[];window.anT=function(){const q=($('an-q').value||'').toLowerCase(),c=$('an-cl').value,s=$('an-st').value;
+ VW=R.filter(r=>(!q||(r.sku+r.desc).toLowerCase().includes(q))&&(!c||r.abc===c)&&(!s||r.estado===s)).sort((a,b)=>b.b-a.b);
+ const col={Quiebre:'#dc2626',Riesgo:'#ea580c',Exceso:'#ca8a04','Sin movimiento':'#64748b',Normal:'#16a34a'};
+ $('an-t').innerHTML=`<table class="x-tbl"><tr><th>SKU</th><th>Descripción</th><th>Stock</th><th>Valor stock</th><th>Consumo (${S.days} d)</th><th>Cobertura (días)</th><th>Rotación/año</th><th>ABC</th><th>Estado</th></tr>${VW.slice(0,300).map(r=>`<tr><td>${esc(r.sku)}</td><td>${esc(r.desc)}</td><td>${fmt(r.st)}</td><td>${money(r.vst)}</td><td>${fmt(r.c)}</td><td>${isFinite(r.cob)?fmt(r.cob):'∞'}</td><td>${r.rot?fmt(r.rot):'—'}</td><td><b>${r.abc}</b></td><td style="color:${col[r.estado]};font-weight:700">${r.estado}</td></tr>`).join('')||'<tr><td colspan=9>Sin datos.</td></tr>'}</table>${VW.length>300?`<small style="color:var(--t-text)">Mostrando 300 de ${VW.length}. Exporta a Excel para ver todo.</small>`:''}`;};
+window.anX=()=>{if(!VW.length)return toast('⚠️ Sin datos');const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(VW.map(r=>({SKU:r.sku,'Descripción':r.desc,Stock:r.st,'Precio unitario':r.pu,'Valor stock':Math.round(r.vst),['Consumo '+S.days+' d']:r.c,'Consumo diario':+r.cd.toFixed(2),'Cobertura (días)':isFinite(r.cob)?Math.round(r.cob):'Sin consumo','Rotación anual':+r.rot.toFixed(2),'Valor consumo anual':Math.round(r.vcons),'% acumulado':+(r.cum||0).toFixed(1),ABC:r.abc,Estado:r.estado}))),'Análisis SKU');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{Indicador:'Valor inventario',Valor:Math.round(S.vInv)},{Indicador:'Consumo anual valorizado',Valor:Math.round(S.vc)},{Indicador:'Rotación (veces/año)',Valor:+S.rot.toFixed(2)},{Indicador:'Cobertura global (días)',Valor:isFinite(S.cob)?Math.round(S.cob):'Sin consumo'},{Indicador:'Capital inmovilizado',Valor:Math.round(S.inmov)}]),'Resumen');
+ XLSX.writeFile(wb,'analisis_inventario.xlsx');};
+const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='analisis')setTimeout(anR,150);};
 })();
 
 </script>
