@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#123737">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta charset="UTF-8">
 <title>Sistema LB</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -4273,9 +4277,11 @@ async function loadPerm(){const r=rol();if(!r||r==='Admin'){permLoaded=true;PERM
  try{const x=await f0(`${SUPA_URL}/rest/v1/wms_permisos?rol=eq.${encodeURIComponent(r)}&select=modulo,escribir`,{headers:SUPA_H});if(x.ok){const a=await x.json();PERM={};a.forEach(p=>{PERM[p.modulo]=!!p.escribir;});permLoaded=true;}}catch(e){}}
 function revert(){clearTimeout(rl);rl=setTimeout(async()=>{quiet=true;try{await loadAppData();['renderTable','renderMovimientos','renderVauchers','renderDespachos'].forEach(k=>{try{if(typeof window[k]==='function')window[k]();}catch(e){}});}catch(e){}setTimeout(()=>{quiet=false;},1500);},1500);}
 // ── Guardia de escritura (por rol y permisos) ──
-window.fetch=function(u,o){let block=false,tbl=null;
+window.fetch=function(u,o){let block=false,tbl=null,offline=false;
  try{const m=((o&&o.method)||'GET').toUpperCase(),url=String((u&&u.url)||u);
+  if(m!=='GET'&&m!=='HEAD'&&url.indexOf('/rest/v1/')>-1&&navigator.onLine===false)offline=true;
   if(m!=='GET'&&m!=='HEAD'){const x=url.match(/\/rest\/v1\/(?:rpc\/)?([a-z_]+)/);if(x){tbl=x[1]==='wms_apply_item_changes'?'inventario':x[1];if((MODS[tbl]||tbl==='usuarios')&&cu()&&!canWrite(tbl))block=true;}}}catch(e){}
+ if(offline){try{if(Date.now()-lastT>2000){lastT=Date.now();t0&&t0('📴 Sin conexión: no se guardó nada. Espera a recuperar señal.');}}catch(e){}return Promise.resolve(new Response('{"message":"sin conexion"}',{status:503,headers:{'Content-Type':'application/json'}}));}
  if(block){
   if(tbl!=='usuarios'&&tbl!=='config'){blockedAt=Date.now();blockMsg=RO(rol())||isRO()?'👁️ Modo solo lectura: no se guardó nada':`🔒 Tu rol (${rol()}) no puede modificar: ${MODS[tbl]}`;revert();}
   return Promise.resolve(new Response('{"message":"sin permiso"}',{status:403,headers:{'Content-Type':'application/json'}}));}
@@ -4371,6 +4377,19 @@ const sv=window.showView;window.showView=function(n,e){sv(n,e);if(n==='lotes')se
 setInterval(async()=>{if(items.length){await load();badge();}},7000);
 })();
 
+</script>
+<script>
+(function(){
+ if('serviceWorker' in navigator)window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+ const bar=document.createElement('div');bar.id='off-bar';bar.textContent='📴 Sin conexión · solo lectura hasta recuperar señal';
+ bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:100010;background:#b45309;color:#fff;text-align:center;padding:6px;font:600 13px Segoe UI,sans-serif;display:none';document.body.appendChild(bar);
+ const upd=()=>{bar.style.display=navigator.onLine?'none':'block';};
+ window.addEventListener('offline',upd);
+ window.addEventListener('online',()=>{upd();try{loadAppData();}catch(e){}});upd();
+ let dp=null;const sec=[...document.querySelectorAll('.sidebar .menu-item')].find(e=>/Cambiar fondo/.test(e.textContent));
+ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;if(sec&&!document.getElementById('menu-install')){const m=document.createElement('div');m.className='menu-item';m.id='menu-install';m.textContent='📲 Instalar app';m.onclick=async()=>{dp.prompt();await dp.userChoice;dp=null;m.remove();};sec.insertAdjacentElement('afterend',m);}});
+ window.addEventListener('appinstalled',()=>{const m=document.getElementById('menu-install');if(m)m.remove();});
+})();
 </script>
 </body>
 </html>
